@@ -1,0 +1,103 @@
+# Builds the Mac versions on GitHub's Macs (Apple's tools only run on macOS): Stagio Lite,
+# Standard and Extra, each for Apple silicon and Intel, side by side.
+# Run it from the Actions tab ("Run workflow"), or by pushing a tag such as v1.0.0-beta.
+# The .dmg / .zip files are attached to the run as "stagio-mac-<edition>" (kept 14 days).
+name: Mac build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [lite, standard, extra]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The Mac counterpart of the Windows PowerShell helper: screens, audio outputs, the slide-show
+      # capture and Bluetooth (mac/helper/main.swift), for Apple silicon and Intel.
+      - name: Build the Mac helper
+        run: sh build/make-mac-helper.sh
+
+      # No PowerPoint, projector or Bluetooth here: every command must still answer, nothing crash.
+      # The same helper goes into all three editions, so it is checked once.
+      - name: Mac helper check
+        if: matrix.edition == 'standard'
+        timeout-minutes: 4
+        env:
+          MAC_CAPTURE_TEST: '1'
+        run: |
+          open -a TextEdit || true
+          sleep 4
+          node test/mac-helper-check.js
+
+      # The checks that don't need Windows: editions, run of show, fades, cues, config.
+      - name: Quick checks
+        if: matrix.edition == 'standard'
+        timeout-minutes: 4
+        run: node test/checks.js --no-helper
+
+      # There is no PowerPoint or Spotify on this machine: the console must still come up and
+      # answer as this edition, which catches anything that breaks the Mac version at start-up.
+      - name: Start-up check
+        timeout-minutes: 3
+        env:
+          STAGIO_EDITION: ${{ matrix.edition }}
+        run: |
+          node -e "
+            process.env.STAGIO_DATA = require('fs').mkdtempSync(require('os').tmpdir() + '/stagio-');
+            const s = require('./server.js');
+            s.ready.then(async () => {
+              const j = await (await fetch('http://127.0.0.1:7300/api/state')).json();
+              console.log('console answers as', j.edition.name, j.edition.label, '; platform', j.platform.os, '; PowerPoint running', j.ppt.running);
+              if (j.edition.id !== process.env.STAGIO_EDITION) { console.error('wrong edition'); process.exit(1); }
+              const c = await (await fetch('http://127.0.0.1:7300/api/mac/check')).json();
+              console.log('--- Mac check ---');
+              console.log(c.ok ? c.data : 'ERROR ' + c.error);
+              s.stop(); process.exit(c.ok ? 0 : 1);
+            }).catch((e) => { console.error(e); process.exit(1); });
+            setTimeout(() => { console.error('no answer in 90 s'); process.exit(1); }, 90000);
+          "
+
+      # Not signed with an Apple Developer ID (that needs a paid Apple account): signed "ad hoc",
+      # so the first start needs right-click -> Open (see the download page). Each edition is its
+      # own app (name, bundle ID), so they can sit side by side in Applications.
+      - name: Build (Apple silicon and Intel)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          ED: ${{ matrix.edition }}
+        run: |
+          NAME=$(node -p "require('./editions.json')[process.env.ED].name")
+          VER=$(node -p "require('./editions.json')[process.env.ED].mac")
+          APPID=$(node -p "({ lite: 'app.onedesk.lite', standard: 'app.onedesk.console', extra: 'app.onedesk.extra' })[process.env.ED]")
+          FILE=$(echo "$NAME" | tr ' ' '-')
+          echo "Building $NAME $VER ($APPID)"
+          npx electron-builder --mac dmg zip --arm64 --x64 --publish never \
+            -c.productName="$NAME" -c.appId="$APPID" \
+            -c.extraMetadata.edition="$ED" -c.extraMetadata.version="$VER" \
+            "-c.mac.artifactName=$FILE-\${version}-mac-\${arch}.\${ext}"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stagio-mac-${{ matrix.edition }}
+          retention-days: 14
+          path: |
+            dist/*.dmg
+            dist/*.zip

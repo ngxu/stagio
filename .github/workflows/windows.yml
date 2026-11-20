@@ -1,0 +1,132 @@
+# Builds the Windows installers on GitHub's Windows machines: Stagio Lite, Standard and Extra.
+# Run it from the Actions tab ("Run workflow"), or by pushing a tag such as v1.1.0-beta.
+# The installers are attached to the run as "stagio-windows" (kept 14 days).
+#
+# Code signing (free for open source, through the SignPath Foundation): once the project is
+# accepted there, add the repository secret SIGNPATH_API_TOKEN and the repository variable
+# SIGNPATH_ORGANIZATION_ID (Settings > Secrets and variables > Actions). From then on Stagio.exe
+# and the three installers are signed here, on GitHub's machines, from this exact source.
+# Without them everything still builds, unsigned. See CODE_SIGNING_POLICY.md.
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  actions: read   # the SignPath action reads the uploaded artifacts
+
+env:
+  SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+  SIGNPATH_PROJECT: stagio
+  SIGNPATH_POLICY: release-signing
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # No PowerPoint, projector or sound card here: the checks that need none of them.
+      - name: Quick checks
+        run: node test/checks.js --no-helper
+
+      # The same NSIS that electron-builder uses (and its plugins, for the taskbar ID of the
+      # shortcuts), placed where build/make-installer.js looks for it.
+      - name: Get NSIS
+        shell: pwsh
+        run: |
+          $cache = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache'
+          $base = 'https://github.com/electron-userland/electron-builder-binaries/releases/download'
+          foreach ($n in 'nsis-3.0.4.1', 'nsis-resources-3.4.1') {
+            $dir = Join-Path $cache "$n\$n-ci"
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            Invoke-WebRequest "$base/$n/$n.7z" -OutFile "$env:RUNNER_TEMP\$n.7z"
+            7z x "$env:RUNNER_TEMP\$n.7z" "-o$dir" -y | Out-Null
+            if ($LASTEXITCODE) { throw "Could not unpack $n" }
+          }
+
+      - name: Pack the app
+        run: node build/make-installer.js --pack-only
+
+      # ---- signing Stagio.exe (only when SignPath is set up) ----
+      - name: Upload Stagio.exe for signing
+        id: app-unsigned
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stagio-exe-unsigned
+          path: dist/win-unpacked/Stagio.exe
+          retention-days: 1
+
+      - name: Sign Stagio.exe
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: app-exe
+          github-artifact-id: ${{ steps.app-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signed-exe
+
+      - name: Use the signed Stagio.exe
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: Copy-Item dist/signed-exe/Stagio.exe dist/win-unpacked/Stagio.exe -Force
+
+      # ---- installers ----
+      - name: Build the three installers
+        run: node build/make-installer.js --no-pack
+
+      - name: Upload the installers for signing
+        id: setup-unsigned
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stagio-windows-unsigned
+          path: dist/*-Setup-*.exe
+          retention-days: 1
+
+      - name: Sign the installers
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: installers
+          github-artifact-id: ${{ steps.setup-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist/signed
+
+      - name: Collect
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          $from = if ($env:SIGN -eq 'true') { 'dist/signed' } else { 'dist' }
+          Get-ChildItem $from -Filter '*-Setup-*.exe' | ForEach-Object {
+            Copy-Item $_.FullName out/
+            $sig = Get-AuthenticodeSignature $_.FullName
+            "{0}  {1:N1} MB  signature: {2}  sha256 {3}" -f $_.Name, ($_.Length / 1MB), $sig.Status, (Get-FileHash $_.FullName).Hash
+          }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stagio-windows
+          path: out/*.exe
+          retention-days: 14

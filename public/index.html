@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0d">
+  <title>Stagio</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- Opened from the phone's home screen: full screen, no browser bars -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Stagio">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-tab="slides" class="no-run no-stage">
+  <header class="bar">
+    <div class="brand"><span id="brandName">Stagio</span> <span class="tag warn hidden" id="betaTag">Beta</span></div>
+    <div class="status">
+      <span class="st" id="stPpt"><i></i><b>PPT</b><em id="stPptText">—</em></span>
+      <span class="st needs-music" id="stMusic"><i></i><b>Music</b><em id="stMusicText">—</em></span>
+      <span class="st" id="stLink"><i></i><b>Link</b><em id="stLinkText">—</em></span>
+    </div>
+    <div class="grow"></div>
+    <!-- show timer (while a show runs); the segment restarts with each cue, or when clicked twice -->
+    <div class="timers wide-timers hidden" data-timers>
+      <span class="tm"><b>Show</b><em class="mono" data-t="show"></em></span>
+      <span class="tm"><b>Slide</b><em class="mono" data-t="slide"></em></span>
+      <button class="tm seg" data-seg><b data-t="segName">Segment</b><em class="mono" data-t="seg"></em></button>
+    </div>
+    <button class="btn sm" id="btnCheck" title="Before the event: is everything ready?">Check</button>
+    <button class="btn sm needs-stage" id="btnStage" title="Stage display: messages to the speaker">Stage</button>
+    <button class="btn sm desktop-only" id="btnRemote">Remote</button>
+    <button class="btn sm desktop-only" id="btnHelp">Keys</button>
+    <button class="btn sm desktop-only" id="btnLayout">Layout</button>
+    <button class="btn sm desktop-only" id="btnSettings">Settings</button>
+    <!-- phone / tablet: keep the screen on, hide the browser bars -->
+    <button class="btn sm touch-only" id="btnAwake" title="Keep this screen on">Awake</button>
+    <button class="btn sm touch-only hidden" id="btnFull" title="Full screen">Full</button>
+    <div class="clock mono" id="clock">--:--:--</div>
+  </header>
+  <div class="lost-bar">No connection to the Stagio PC · reconnecting…</div>
+
+  <!-- Extra: run of show. The parts of the event; Next part opens the next file, shows the countdown… -->
+  <div class="runbar needs-run" id="runbar">
+    <span class="label run-label">Run</span>
+    <select id="runSelect" title="Run of show"></select>
+    <button class="btn sm go" id="btnRunStart" title="Start the run at its first part">Start</button>
+    <button class="btn sm" id="btnRunPrev" title="Back to the previous part">Back</button>
+    <div class="run-parts" id="runParts"></div>
+    <div class="run-now" id="runNow">
+      <b id="runNowName"></b>
+      <em class="mono" id="runLeft"></em>
+      <span class="mono run-delta" id="runDelta"></span>
+    </div>
+    <button class="btn sm primary" id="btnRunNext">Next part <span class="k">G</span></button>
+    <button class="btn sm" id="btnRunEdit">Edit…</button>
+    <button class="btn sm" id="btnRunStop" title="End the run of show (the slide show keeps running)">Stop</button>
+    <div class="run-msg hidden" id="runMsg"></div>
+  </div>
+
+  <main class="desk">
+    <!-- ================= Slides ================= -->
+    <section class="sec slides" data-panel="slides">
+      <div class="sec-h">
+        <h2>Slides</h2>
+        <select id="presSelect" title="Presentation"></select>
+        <button class="btn sm" id="btnOpenFile">Open…</button>
+        <span class="tag" id="coedit"></span>
+        <button class="tag warn hidden" id="pvTag">Protected View · enable editing</button>
+        <button class="tag warn hidden" id="slowTag" title="This file is slow in PowerPoint for Windows. Click to speed it up.">Slow in PowerPoint</button>
+        <div class="grow"></div>
+        <button class="btn sm go" id="btnStartShow">Start <span class="k">F5</span></button>
+        <button class="btn sm" id="btnEndShow">End show</button>
+      </div>
+
+      <div class="stage">
+        <figure class="mon program">
+          <figcaption><span><span class="tally red">Program</span><span class="feed-tag" id="feedTag"></span><span class="busy-tag">Working…</span></span><span class="mono" id="nowLabel"></span></figcaption>
+          <div class="frame" id="nowFrame">
+            <img id="nowImg" alt="">
+            <div class="overlay" id="nowOverlay"></div>
+            <div class="frame-note hidden" id="nowNote"></div>
+          </div>
+        </figure>
+        <div class="split split-v" id="splitStage" title="Drag to resize · double-click to reset"></div>
+        <div class="side">
+          <figure class="mon preview">
+            <figcaption><span class="tally green">Preview</span><span class="mono" id="nextLabel"></span></figcaption>
+            <div class="frame"><img id="nextImg" alt=""><div class="overlay" id="nextOverlay"></div></div>
+          </figure>
+          <div class="notes">
+            <div class="notes-h">
+              <span class="label">Notes</span>
+              <span class="sizer">
+                <button class="btn xs" id="notesSmaller" title="Smaller notes text">A−</button>
+                <button class="btn xs" id="notesBigger" title="Bigger notes text">A+</button>
+              </span>
+            </div>
+            <div id="notes" class="notes-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- phones: the show timer sits above the buttons (the header has no room) -->
+      <div class="timers phone-timers hidden" data-timers>
+        <span class="tm"><b>Show</b><em class="mono" data-t="show"></em></span>
+        <span class="tm"><b>Slide</b><em class="mono" data-t="slide"></em></span>
+        <button class="tm seg" data-seg><b data-t="segName">Segment</b><em class="mono" data-t="seg"></em></button>
+      </div>
+
+      <div class="transport">
+        <button class="btn xl" id="btnPrev">Prev <span class="k">←</span></button>
+        <button class="btn xl" id="btnBlack">Black <span class="k">B</span></button>
+        <button class="btn xl" id="btnWhite">White <span class="k">W</span></button>
+        <button class="btn xl primary" id="btnNext">Next <span class="k">→</span></button>
+      </div>
+
+      <div class="strip-h">
+        <span class="label" id="stripTitle">Slides</span>
+        <span class="label dim"><span class="wide-only">Live edits refresh automatically · </span><button class="link" id="btnRefreshThumbs">Reload all</button></span>
+      </div>
+      <div class="strip" id="strip"></div>
+      <div class="empty" id="pptEmpty">
+        <p>No presentation open</p>
+        <p class="dim">Open a .pptx in PowerPoint, or use Open… above.</p>
+      </div>
+    </section>
+
+    <div class="split split-v" id="splitSide" title="Drag to resize · double-click to reset"></div>
+    <div class="sidecol">
+    <!-- ================= Music ================= -->
+    <section class="sec music needs-music" data-panel="music">
+      <div class="sec-h">
+        <h2>Music</h2>
+        <div class="grow"></div>
+        <div class="seg sm" id="musicMode">
+          <button data-music="local" title="Control the Spotify app on this PC. Works with a free account.">Local</button>
+          <button data-music="spotify" title="Spotify Web API: playlists, search, devices. Needs Premium.">Premium</button>
+          <button data-music="off">Off</button>
+        </div>
+      </div>
+
+      <div id="spotifyOff" class="note hidden">Music control is off. Music steps in cues are skipped.</div>
+      <div id="localHint" class="note hidden"></div>
+      <div id="spotifySetup" class="setup hidden"></div>
+
+      <div id="spotifyMain">
+        <div class="np">
+          <div class="art" id="art"></div>
+          <div class="meta">
+            <div class="track" id="trackName">Nothing playing</div>
+            <div class="artist" id="trackArtist"></div>
+            <div class="device" id="trackDevice"></div>
+          </div>
+        </div>
+        <div class="progress" id="progress"><div id="progressBar"></div></div>
+        <div class="times mono"><span id="tPos">0:00</span><span id="fadingLabel" class="fading"></span><span id="tDur">0:00</span></div>
+
+        <div class="mctl">
+          <button class="btn icon premium-only" id="btnShuffle" title="Shuffle"></button>
+          <button class="btn icon" id="btnPrevTrack" title="Previous track"></button>
+          <button class="btn icon play" id="btnPlay" title="Play / pause (P)"></button>
+          <button class="btn icon" id="btnNextTrack" title="Next track (N)"></button>
+          <button class="btn icon premium-only" id="btnRepeat" title="Repeat"></button>
+        </div>
+
+        <label class="fader">
+          <span class="label" id="musicVolLabel">Level</span>
+          <input type="range" min="0" max="100" id="musicVol">
+          <output class="mono" id="musicVolOut">–</output>
+        </label>
+
+        <div class="fades">
+          <button class="btn" id="btnFadeOut">Fade out <span class="k">O</span></button>
+          <label class="secs"><input class="mono" type="number" id="fadeSecs" value="4" min="1" max="20"><span>s</span></label>
+          <button class="btn" id="btnFadeIn">Fade in <span class="k">I</span></button>
+        </div>
+        <!-- fade between two chosen levels (from empty = where it is now) -->
+        <div class="fadeto">
+          <span class="label">Fade from</span>
+          <input class="mono" type="number" id="fadeFrom" min="0" max="100" placeholder="now" title="Level to start from. Empty: the level it has now">
+          <span class="label">to</span>
+          <input class="mono" type="number" id="fadeTo" min="0" max="100" value="30" title="Level to end at (0 pauses the music at the end)">
+          <button class="btn" id="btnFadeTo" title="Uses the seconds above">Fade</button>
+        </div>
+
+        <p class="hint local-only">Local mode: transport, level and fades. Pick playlists in the Spotify app. Fades change Spotify only, not the system volume.</p>
+
+        <div class="premium-only">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-mtab="playlists">Playlists</button>
+            <button class="tab" data-mtab="search">Search</button>
+            <button class="tab" data-mtab="devices">Devices</button>
+          </div>
+          <div class="mtab" data-mtab="playlists"><div class="list" id="playlistList"><p class="dim">Loading…</p></div></div>
+          <div class="mtab hidden" data-mtab="search">
+            <input type="search" id="searchBox" placeholder="Search tracks or playlists, then Enter">
+            <div class="list" id="searchList"></div>
+          </div>
+          <div class="mtab hidden" data-mtab="devices"><div class="list" id="deviceList"></div></div>
+          <p><button class="link" id="btnSpotifyLogout">Disconnect Spotify account</button></p>
+        </div>
+      </div>
+    </section>
+
+    <div class="split split-h needs-music" id="splitMusic" title="Drag to resize · double-click to reset"></div>
+
+    <!-- ================= Output ================= -->
+    <section class="sec output" data-panel="output">
+      <div class="sec-h"><h2>Output</h2></div>
+
+      <div class="needs-audio">
+        <div class="label">Audio device</div>
+        <div class="list" id="audioDevices"></div>
+        <label class="fader">
+          <span class="label">System</span>
+          <input type="range" min="0" max="100" id="sysVol">
+          <output class="mono" id="sysVolOut">–</output>
+        </label>
+        <button class="btn wide" id="btnMute">Mute</button>
+
+        <p class="hint" id="audioSwitchHint"></p>
+      </div>
+
+      <div id="displayGroup" class="needs-displayMode">
+        <div class="label gap">Display mode</div>
+        <div class="seg" id="displayModes">
+          <button data-mode="internal">PC only</button>
+          <button data-mode="clone">Duplicate</button>
+          <button data-mode="extend">Extend</button>
+          <button data-mode="external">Projector</button>
+        </div>
+      </div>
+      <div id="monitorGroup">
+        <div class="label gap">Show slides on</div>
+        <select id="monitorSelect"></select>
+      </div>
+      <p class="hint" id="screensHint"></p>
+      <div id="presenterGroup">
+        <div class="label gap">PowerPoint presenter view</div>
+        <div class="seg" id="presenterModes">
+          <button data-pv="hide">Hide</button>
+          <button data-pv="show">Show</button>
+        </div>
+        <p class="hint">With a projector connected, PowerPoint opens its own Presenter View on this screen, on top of Stagio. Hide keeps it away. Applies the next time a show starts.</p>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <!-- ================= Cues ================= -->
+  <footer class="cuebar needs-cues" data-panel="cues">
+    <span class="label cues-label">Cues</span>
+    <div class="cues" id="cues"></div>
+    <button class="btn sm" id="btnAutoCues" title="Cues set to run by themselves at a slide">Auto</button>
+    <button class="btn sm" id="btnEditCues">Edit</button>
+  </footer>
+
+  <!-- phone / tablet navigation -->
+  <nav class="mnav">
+    <button data-tab="slides">Slides</button>
+    <button data-tab="music" class="needs-music">Music</button>
+    <button data-tab="output">Output</button>
+    <button data-tab="cues" class="needs-cues">Cues</button>
+    <button data-settings>Settings</button>
+  </nav>
+
+  <!-- ================= Dialogs ================= -->
+  <dialog id="dlgRemote">
+    <h3>Remote control</h3>
+    <div id="remoteLan">
+      <p>1. Put the phone or tablet on Wi-Fi <b id="remoteWifi"></b>.</p>
+      <p>2. Scan the code with the phone's camera and open the link in Safari or Chrome.</p>
+      <div class="qr" id="qr"></div>
+      <div class="remote-alt">
+        <div><span class="label">Or open</span><code class="mono" id="remoteUrl"></code></div>
+      </div>
+      <p class="hint" id="remoteOthers"></p>
+    </div>
+    <p class="warn-text hidden" id="remoteNoLan">This PC is not on any network. Use Stagio Wi-Fi below.</p>
+    <div class="remote-alt"><div><span class="label">PIN</span><code class="mono pin" id="remotePin"></code></div></div>
+
+    <!-- Extra: the speaker's view-only screen -->
+    <div class="link-card stage-card needs-stage" id="stageCard">
+      <div class="link-h"><b>Stage display</b><span class="dim">for the speaker or host · view only</span></div>
+      <p class="dim">A phone or tablet on the lectern: the slide on the projector, the next one, the notes, the time left, and your messages. It can't change anything (unless you allow Prev/Next under Stage).</p>
+      <div class="qr-pair">
+        <figure><div class="qr" id="stageQr"></div><figcaption>Scan with the speaker's phone or tablet<br><code class="mono" id="stageUrl"></code></figcaption></figure>
+      </div>
+      <div class="remote-alt"><div><span class="label">Stage PIN</span><code class="mono pin" id="stagePin"></code></div></div>
+    </div>
+
+    <details class="trouble" id="remoteBackup">
+      <summary class="label">No Wi-Fi, or the phone can't reach this PC?</summary>
+      <div class="link-card" id="ownWifiCard">
+        <div class="link-h"><b>Stagio Wi-Fi</b><span class="dim">iPhone and Android</span><span class="grow"></span><span class="tag" id="ownWifiTag"></span><button class="btn sm" id="btnOwnWifi">Start</button></div>
+        <p class="dim">This PC opens a small Wi-Fi network of its own for the phones. Works with no Wi-Fi at the venue, or when the venue Wi-Fi keeps phones apart from the PC. Phones on it have no internet.</p>
+        <div class="hidden" id="ownWifiOn">
+          <div class="qr-pair">
+            <figure><div class="qr" id="ownWifiJoinQr"></div><figcaption>1. Scan to join <b class="mono" id="ownWifiSsid"></b><br>password <code class="mono" id="ownWifiPass"></code></figcaption></figure>
+            <figure><div class="qr" id="ownWifiOpenQr"></div><figcaption>2. Then scan to open Stagio<br><code class="mono" id="ownWifiUrl"></code></figcaption></figure>
+          </div>
+          <ul class="hint-list">
+            <li>If the phone says the network has no internet, choose to stay connected.</li>
+            <li>If the phone joins but the page doesn't open: Windows may be blocking Stagio on this kind of network. Allow Stagio for public networks in Windows Security → Firewall → Allow an app.</li>
+            <li>It stays on while Stagio runs; the name and password are always the same, so phones join again by themselves.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="link-card hidden" id="hotspotCard">
+        <div class="link-h"><b>Phone hotspot</b><span class="dim">iPhone and Android</span></div>
+        <p class="dim">A Mac can't open a Wi-Fi network of its own, but it can join the phone's:</p>
+        <ol class="hint-list">
+          <li>On the phone, turn on Personal Hotspot (iPhone) or Hotspot (Android).</li>
+          <li>On this Mac, choose that phone's network in the Wi-Fi menu.</li>
+          <li>Close this window and click Remote again: the code above then points at this Mac on the phone's network. Scan it with that same phone.</li>
+        </ol>
+      </div>
+      <div class="link-card" id="btCard">
+        <div class="link-h"><b>Bluetooth</b><span class="dim">Android phones, in Chrome</span><span class="grow"></span><span class="tag" id="btTag"></span><button class="btn sm" id="btnBluetooth">Start</button></div>
+        <p class="dim">For when no Wi-Fi works at all. The phone controls slides, black/white, cues and fades; it shows the slide number, not pictures. iPhones can't use Bluetooth from a web page: use Stagio Wi-Fi.</p>
+        <div class="hidden" id="btOn">
+          <div class="qr-pair">
+            <figure><div class="qr" id="btPageQr"></div><figcaption>On the Android phone, open this page in Chrome<br><code class="mono" id="btPageUrl"></code></figcaption></figure>
+          </div>
+          <ul class="hint-list">
+            <li>The first time it needs internet (mobile data is fine); after that it works offline. Add it to the home screen.</li>
+            <li>Tap <b>Connect</b>, choose this PC in the list, and enter the PIN above.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+    <details class="trouble">
+      <summary class="label">Install on the phone's home screen</summary>
+      <ul>
+        <li><b>iPhone / iPad (Safari):</b> open the link, tap Share, then <b>Add to Home Screen</b>.</li>
+        <li><b>Android (Chrome):</b> open the link, tap ⋮, then <b>Add to Home screen</b>.</li>
+        <li><b>Mac (Safari):</b> open the link, then File → <b>Add to Dock</b>.</li>
+        <li>The icon opens Stagio full screen. The first time, enter the PIN once.</li>
+        <li>The icon remembers this PC's address. If it stops connecting, the PC's address has probably changed: scan the new code and add it again. Reserving the address in the Wi-Fi router stops this from happening.</li>
+      </ul>
+    </details>
+    <details class="trouble">
+      <summary class="label">Phone can't connect?</summary>
+      <ul>
+        <li>The phone must use the same Wi-Fi, not mobile data or a guest network. Some routers block devices from seeing each other (“AP isolation”); turn that off or use another network.</li>
+        <li>Keep Stagio running on this PC.</li>
+        <li>The first time Stagio runs, Windows asks whether to allow it on the network: choose Allow, for both private and public networks.</li>
+        <li>If the page never loads, security software on this PC may be blocking port 7300. Allow Stagio / port 7300 there.</li>
+        <li>QR scanners inside chat apps sometimes fail; open the link in the phone's normal browser, or type the address and use the PIN.</li>
+      </ul>
+    </details>
+    <form method="dialog" class="actions"><button class="btn">Close</button></form>
+  </dialog>
+
+  <div class="login hidden" id="login">
+    <div class="login-box">
+      <div class="brand">Stagio</div>
+      <p class="dim">Enter the PIN shown under <b>Remote</b> on the Stagio PC.</p>
+      <input class="mono" id="loginPin" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <button class="btn primary wide" id="btnLogin">Connect</button>
+      <p class="login-msg" id="loginMsg"></p>
+    </div>
+  </div>
+
+  <dialog id="dlgHelp">
+    <h3>Keyboard</h3>
+    <p class="dim">Works while the Stagio window has focus. Presentation clickers work too.</p>
+    <table class="keys">
+      <tr><td>→ &nbsp;Space &nbsp;Enter &nbsp;PgDn</td><td>Next slide</td></tr>
+      <tr><td>← &nbsp;PgUp</td><td>Previous slide</td></tr>
+      <tr><td>B &nbsp;or &nbsp;.</td><td>Black screen on/off</td></tr>
+      <tr><td>W &nbsp;or &nbsp;,</td><td>White screen on/off</td></tr>
+      <tr><td>F5</td><td>Start show from slide 1</td></tr>
+      <tr><td>Home &nbsp;/ &nbsp;End</td><td>First / last slide</td></tr>
+      <tr class="needs-music"><td>P</td><td>Music play / pause</td></tr>
+      <tr class="needs-music"><td>N</td><td>Next track</td></tr>
+      <tr class="needs-music"><td>O &nbsp;/ &nbsp;I</td><td>Fade out / fade in</td></tr>
+      <tr class="needs-music"><td>↑ &nbsp;/ &nbsp;↓</td><td>Music level ±5</td></tr>
+      <tr class="needs-cues"><td id="cueKeyText">1 – 9</td><td>Run cue</td></tr>
+      <tr class="needs-run"><td>G</td><td>Next part of the run of show</td></tr>
+    </table>
+    <div class="needs-cues">
+      <div class="label gap">Cue keys</div>
+      <div class="seg" id="cueKeyMode">
+        <button data-ck="plain">1 – 9</button>
+        <button data-ck="shift">Shift + 1 – 9</button>
+      </div>
+      <p class="hint">With Shift + 1 – 9, touching a number key by accident does nothing; the cue only runs with Shift held down.</p>
+    </div>
+    <form method="dialog" class="actions"><button class="btn">Close</button></form>
+  </dialog>
+
+  <dialog id="dlgSettings">
+    <h3>Settings</h3>
+    <p class="dim">Kept on this device only: a phone, a tablet and the PC each have their own.</p>
+    <div class="label gap">Phone and tablet screen</div>
+    <label class="check gap"><input type="checkbox" id="setFixedBar"> Keep the top bar on screen when scrolling</label>
+    <label class="check gap"><input type="checkbox" id="setFixedButtons"> Keep Prev, Black, White and Next on screen in Slides</label>
+    <p class="hint">Turn these off to give the slides more room; the bar and the buttons then scroll with the page.</p>
+    <div class="label gap">Notes text</div>
+    <div class="sizer-row">
+      <button class="btn" data-notes-size="-1">A−</button>
+      <span class="mono" id="setNotesSize">13</span>
+      <button class="btn" data-notes-size="1">A+</button>
+    </div>
+    <div class="label gap">About</div>
+    <p class="dim" id="aboutText">Stagio</p>
+    <p class="hint">Copyright (C) 2026 ngxu and contributors. Free software under the GNU General Public License, version 3 or later, with no warranty. Source code: github.com/ngxu/stagio</p>
+    <div class="hidden" id="macCheckBox">
+      <div class="label gap">Mac check</div>
+      <p class="hint">Collects what PowerPoint and macOS allow on this Mac, so the Mac-only parts can be finished. Run it once with a presentation open and once during a slide show, then copy the text and send it. It only reads; it changes nothing. (It includes the names of the open presentations.)</p>
+      <button class="btn" id="btnMacCheck">Run Mac check</button>
+      <textarea class="mono hidden" id="macCheckOut" readonly rows="10"></textarea>
+      <button class="btn hidden" id="btnMacCheckCopy">Copy</button>
+    </div>
+    <form method="dialog" class="actions"><button class="btn primary">Done</button></form>
+  </dialog>
+
+  <dialog id="dlgStage">
+    <h3>Stage display</h3>
+    <p class="dim" id="stageScreens"></p>
+    <div class="stage-now hidden" id="stageNow">
+      <div class="label">On the stage display now</div>
+      <div class="stage-msg"><b id="stageMsgText"></b><span class="tag" id="stageMsgState"></span></div>
+      <button class="btn sm" id="btnStageClear">Clear</button>
+    </div>
+    <div class="label gap">Send</div>
+    <div class="stage-presets" id="stagePresets"></div>
+    <form class="stage-send" id="stageForm">
+      <input type="text" id="stageText" maxlength="140" placeholder="Your own message, then Enter">
+      <button class="btn primary">Send</button>
+    </form>
+    <p class="hint">The message flashes full screen on the stage display, then stays at the top until you clear it. When the speaker taps it, it shows here as Seen.</p>
+    <details class="trouble" id="stagePresetEdit">
+      <summary class="label">Change the ready-made messages</summary>
+      <textarea id="stagePresetText" rows="6" placeholder="One per line"></textarea>
+      <button class="btn sm" id="btnStagePresets">Save</button>
+    </details>
+    <label class="check gap"><input type="checkbox" id="stageCanFlip"> The speaker can change slides (Prev / Next on the stage display)</label>
+    <div class="actions">
+      <button class="btn" id="btnStageCode">Connect a stage display…</button>
+      <div class="grow"></div>
+      <form method="dialog"><button class="btn primary">Done</button></form>
+    </div>
+  </dialog>
+
+  <dialog id="dlgCheck">
+    <h3>Before the event</h3>
+    <p class="dim">What Stagio can check from here. Amber or red needs a look.</p>
+    <div class="checklist" id="checkList"></div>
+    <p class="hint">Not checked: what the projector and the speakers really show and play. Look at the screen and play a few seconds of music before people arrive.</p>
+    <form method="dialog" class="actions"><button class="btn">Close</button></form>
+  </dialog>
+
+  <dialog id="dlgCues" class="wide">
+    <h3>Cues</h3>
+    <p class="dim">Steps run top to bottom. Fades run in the background, so the next step starts right away.</p>
+    <p class="dim">A cue can also run by itself when the show reaches a slide going forward (not when stepping back). It stays with that slide if slides are added or moved. Whoever builds the slides can do the same by writing <span class="mono">[cue: name]</span> in a slide's notes.</p>
+    <div id="cueEditor"></div>
+    <div class="actions">
+      <button class="btn" id="btnAddCue">Add cue</button>
+      <div class="grow"></div>
+      <button class="btn" id="btnCancelCues">Cancel</button>
+      <button class="btn primary" id="btnSaveCues">Save</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlgRun" class="wide">
+    <h3>Run of show</h3>
+    <p class="dim">The parts of the event, in order. <b>Next part</b> does what each part needs: opens the speaker's file and starts its slide show, shows the countdown on the projector, brings the music in. The next file is opened ahead of time, so the change is quick. Planned minutes tell you how far ahead or behind you are.</p>
+    <div class="run-ed-top">
+      <select id="runEdSelect" title="Run of show to edit"></select>
+      <input type="text" id="runEdName" placeholder="Name, e.g. Sunday service">
+      <button class="btn sm" id="btnRunNew">New</button>
+      <button class="btn sm" id="btnRunDup" title="A copy to change for the next event (keeps every part)">Duplicate</button>
+      <button class="btn sm" id="btnRunDel">Delete</button>
+    </div>
+    <div id="runEditor"></div>
+    <datalist id="runFiles"></datalist>
+    <div class="actions">
+      <button class="btn" id="btnRunAddPart">Add part</button>
+      <span class="dim mono" id="runEdTotal"></span>
+      <div class="grow"></div>
+      <button class="btn" id="btnRunCancel">Cancel</button>
+      <button class="btn primary" id="btnRunSave">Save</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlgLayout">
+    <h3>Layout</h3>
+    <p class="dim">Drag the dividers between the panels to make them bigger or smaller (double-click a divider to reset it). The layout is kept on this computer; phones and other computers have their own.</p>
+    <div class="label gap">Arrangement</div>
+    <div class="seg" id="layPresets">
+      <button data-preset="standard">Standard</button>
+      <button data-preset="program">Big program</button>
+      <button data-preset="slides">Slides only</button>
+      <button data-preset="list">Big slide list</button>
+    </div>
+    <div class="label gap">Show</div>
+    <div class="checks" id="layShow">
+      <label class="needs-music"><input type="checkbox" data-part="music"> Music</label>
+      <label><input type="checkbox" data-part="output"> Output</label>
+      <label><input type="checkbox" data-part="side"> Preview and notes</label>
+      <label><input type="checkbox" data-part="notes"> Notes</label>
+      <label><input type="checkbox" data-part="strip"> Slide list</label>
+      <label class="needs-cues"><input type="checkbox" data-part="cues"> Cue bar</label>
+    </div>
+    <label class="check gap"><input type="checkbox" id="laySwap"> <span class="needs-music">Music and </span>Output on the left</label>
+    <label class="fader">
+      <span class="label">Slide list</span>
+      <input type="range" id="layThumb" min="80" max="280" step="4">
+      <output class="mono" id="layThumbOut"></output>
+    </label>
+    <div class="actions">
+      <button class="btn" id="btnLayoutReset">Reset to standard</button>
+      <div class="grow"></div>
+      <form method="dialog"><button class="btn primary">Done</button></form>
+    </div>
+  </dialog>
+
+  <dialog id="dlgFast">
+    <h3>Speed up in PowerPoint</h3>
+    <div id="fastBody"></div>
+    <div class="meter hidden" id="fastMeter"><div id="fastBar"></div></div>
+    <div class="actions">
+      <button class="btn" id="btnFastClose">Close</button>
+      <div class="grow"></div>
+      <button class="btn" id="btnFastCancel">Stop</button>
+      <button class="btn" id="btnFastGo">Make faster copy</button>
+      <button class="btn primary" id="btnFastInplace">Speed up this file</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlgOpen">
+    <h3>Open presentation</h3>
+    <button class="btn primary wide hidden" id="btnBrowse">Browse this PC…</button>
+    <div id="recentBox">
+      <div class="label gap">Recent</div>
+      <div class="list" id="recentList"></div>
+    </div>
+    <div class="label gap">File path</div>
+    <p class="dim" id="openHint">In File Explorer, Shift + right-click the file → Copy as path, then paste it here.</p>
+    <input type="text" id="openPath" class="mono" placeholder="C:\Users\...\Service.pptx">
+    <div class="actions">
+      <div class="grow"></div>
+      <button class="btn" id="btnCancelOpen">Cancel</button>
+      <button class="btn primary" id="btnConfirmOpen">Open</button>
+    </div>
+  </dialog>
+
+  <div class="drop-veil">Drop to open in PowerPoint</div>
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

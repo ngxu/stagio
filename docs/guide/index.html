@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en" data-only="en" data-other="zh.html">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0d">
+  <title>Stagio · Guide</title>
+  <meta name="description" content="How to use Stagio: one person runs PowerPoint, music and the projector from one console, with a phone as the remote. Editions, the console, phone remote, music fades, cues, run of show and the opening countdown.">
+  <link rel="icon" type="image/png" href="../icons/favicon.png">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="../site.css">
+  <link rel="alternate" hreflang="zh-Hans" href="zh.html">
+  <script src="../lang.js"></script>
+</head>
+<body class="guide">
+  <header class="top">
+    <img src="../icons/icon-192.png" alt="" width="40" height="40">
+    <div>
+      <h1>Stagio guide</h1>
+      <p class="dim">One person runs slides, music and the projector</p>
+    </div>
+    <nav class="topnav"><a href="../">Download</a><a href="./" aria-current="page">Guide</a><button class="langbtn" type="button" data-lang-toggle>中文</button></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <video controls preload="metadata" playsinline poster="img/video-poster.png">
+        <source src="stagio-explainer.mp4" type="video/mp4">
+      </video>
+      <div class="hero-text">
+        <p class="lead">At most events, one person changes the slides, another plays the music, and someone else deals with the projector and the sound. Stagio puts all of that on one console, so one person can run it, from the computer or from a phone.</p>
+        <p>It works with the PowerPoint you already use and the Spotify app on the same computer. Nothing changes in your presentations.</p>
+        <p><a class="btn primary" href="../">Download for Windows and Mac</a></p>
+      </div>
+    </section>
+
+    <nav class="toc" aria-label="Contents">
+      <a href="#editions">Editions</a>
+      <a href="#install">Install</a>
+      <a href="#console">The console</a>
+      <a href="#phone">Phone remote</a>
+      <a href="#music">Music and fades</a>
+      <a href="#output">Sound and projector</a>
+      <a href="#cues">Cues</a>
+      <a href="#run">Run of show</a>
+      <a href="#countdown">Countdown</a>
+      <a href="#stage">Stage display</a>
+      <a href="#check">Before the event</a>
+      <a href="#keys">Keyboard</a>
+      <a href="#help">Troubleshooting</a>
+    </nav>
+
+    <section id="editions">
+      <h2>Which edition?</h2>
+      <p>Stagio comes in three editions. Each one only shows what it has, so there is nothing to set up that you will not use. Each bigger edition has everything of the smaller one.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Lite</th><th>Standard</th><th>Extra</th></tr></thead>
+          <tbody>
+            <tr><td>For</td><td>Presenting your own slides</td><td>One person running slides, music and the projector</td><td>Whoever runs the whole event</td></tr>
+            <tr><td>Slides, black/white, notes, timers, real slide pictures, phone remote, pre-event check</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+            <tr><td>Music and fades, sound output, projector mode, cues</td><td>–</td><td>Yes</td><td>Yes</td></tr>
+            <tr><td>Run of show, opening countdown, stage display and messages</td><td>–</td><td>–</td><td>Yes</td></tr>
+            <tr><td>First-time setup</td><td>Open the file, scan the code</td><td>+ choose the music mode, connect the projector</td><td>+ plan the run of show</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>All three can be installed on the same computer. They share their settings, PIN and cues, and one runs at a time: opening another edition asks whether to switch to it. The version numbers (Beta 1.0 and up) are kept per edition and per system.</p>
+      <figure><img src="img/console-lite.png" alt="Stagio Lite: the slides, notes and timers, and where the slides are shown" loading="lazy"><figcaption>Stagio Lite: slides, notes and timers; no music, cues or run of show.</figcaption></figure>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <div class="cols">
+        <div>
+          <h3>Windows</h3>
+          <ol>
+            <li>Download your edition from the <a href="../">download page</a> and open it. Windows 10 or 11, with PowerPoint 2016 or Microsoft 365. Music needs the Spotify app.</li>
+            <li>If Windows says “Windows protected your PC”: More info → Run anyway. The installer is not code-signed yet (free signing for open-source projects has been applied for).</li>
+            <li>If nothing happens, antivirus software is still checking the new file. Try again in a few minutes.</li>
+            <li>Stagio used to be called OneDesk. With OneDesk installed, install the same edition of Stagio (OneDesk Extra → Stagio Extra): it updates it and keeps the settings, PIN and cues. OneDesk 0.x: install Standard. Windows Firewall asks once more; allow private networks.</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Mac <span class="tag warn">test version</span></h3>
+          <ol>
+            <li>Download the Apple silicon or Intel version and drag it to Applications.</li>
+            <li>The first time, Control-click the app → Open (it is not signed by Apple).</li>
+            <li>Allow it to control PowerPoint and Spotify when macOS asks. The live projector picture needs macOS 14 and the Screen Recording permission.</li>
+            <li>Not yet tested with PowerPoint on a real Mac: try it before an event.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="console">
+      <h2>The console</h2>
+      <p>Open your presentation in PowerPoint, or with <b>Open…</b> in Stagio (recent files, a path, or drag the file onto the window). Start the show with <b>Start</b> or F5.</p>
+      <figure class="annotated">
+        <div class="shot">
+          <img src="img/console.png" alt="The Stagio Extra console during a show">
+          <span class="pin" style="left:17%;top:7.4%">1</span>
+          <span class="pin" style="left:47%;top:2.4%">2</span>
+          <span class="pin" style="left:2.6%;top:20%">3</span>
+          <span class="pin" style="left:43.5%;top:20%">4</span>
+          <span class="pin" style="left:43.5%;top:44%">5</span>
+          <span class="pin" style="left:2.6%;top:63.5%">6</span>
+          <span class="pin" style="left:2.6%;top:79%">7</span>
+          <span class="pin" style="left:64.6%;top:13%">8</span>
+          <span class="pin" style="left:64.6%;top:59.5%">9</span>
+          <span class="pin" style="left:4.4%;top:93.8%">10</span>
+        </div>
+        <figcaption>Stagio Extra during a show. Lite has the slides part only; Standard has no run of show.</figcaption>
+      </figure>
+      <ol class="legend">
+        <li><b>Run of show</b> (Extra): the parts of the event, time left, ahead or behind. <a href="#run">More</a></li>
+        <li><b>Timers</b>: how long the show has run, this slide, and this part (click twice to restart it).</li>
+        <li><b>Program</b>: what is on the projector right now, taken from the projector itself.</li>
+        <li><b>Preview</b>: the next slide.</li>
+        <li><b>Notes</b> for the slide on the projector; A− / A+ change the size on this device.</li>
+        <li><b>Prev, Black, White, Next</b>. Black and white blank the projector; press again to come back.</li>
+        <li><b>All slides</b>: click one to jump there. The pictures are the real slides and follow edits made in PowerPoint, even during the show.</li>
+        <li><b>Music</b>: play, skip, level and fades. <a href="#music">More</a></li>
+        <li><b>Output</b>: sound device, system level, projector mode. <a href="#output">More</a></li>
+        <li><b>Cues</b>: one button for a sequence of steps. <a href="#cues">More</a></li>
+      </ol>
+      <p>The status at the top left shows PowerPoint (LIVE, BLACK, the slide number), the music and the link to this computer. <b>Layout</b> lets you resize panels, hide what you don't need, or swap sides; each computer keeps its own layout.</p>
+      <p><b>Slow files</b> (Windows): some files exported from Canva change slides slowly in PowerPoint for Windows because of decorative text in fonts the computer doesn't have. Stagio shows <b>Slow in PowerPoint</b>; <b>Speed up</b> turns that text into pictures of itself, so the slides look the same and change quickly. It can make a faster copy or speed up the file itself (an earlier version is kept on this computer).</p>
+    </section>
+
+    <section id="phone">
+      <h2>Your phone is the remote</h2>
+      <div class="cols media-right">
+        <div>
+          <ol>
+            <li>Phone and computer on the same Wi-Fi.</li>
+            <li>On the computer, click <b>Remote</b> and scan the code with the phone's camera. Or type the address shown, then the 6-digit PIN.</li>
+            <li>Add it to the home screen (the steps are in the Remote window). From then on it opens like an app.</li>
+          </ol>
+          <p>The phone shows the same console: Program, Preview, notes, timers and the four slide buttons, which stay on screen while you scroll. <b>Awake</b> keeps the screen on; <b>Full</b> hides the browser bars. In Settings you can let the top bar and the buttons scroll instead, and choose the notes size.</p>
+          <p>Eight wrong PINs in a row lock that phone out for five minutes.</p>
+          <h3>No Wi-Fi?</h3>
+          <ul>
+            <li><b>Stagio Wi-Fi</b> (Windows): the computer opens its own network. Scan the first code to join it and the second to open Stagio. Works with iPhone and Android.</li>
+            <li><b>Phone hotspot</b> (Mac): turn on the phone's hotspot, join it from the Mac, then scan the code.</li>
+            <li><b>Bluetooth</b> (Android, Chrome): the <a href="../remote/">Bluetooth remote</a> controls slides, black/white, cues and music without any network. It shows the slide number, not the pictures.</li>
+          </ul>
+        </div>
+        <figure class="phone"><img src="img/phone.png" alt="Stagio on a phone during a run of show" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <section id="music">
+      <h2>Music and fades <span class="tag">Standard · Extra</span></h2>
+      <p>Two ways to control Spotify:</p>
+      <ul>
+        <li><b>Local</b>: the Spotify app on this computer, a free account works. Play, pause, skip, level and fades. Choose playlists in the Spotify app.</li>
+        <li><b>Premium</b>: Spotify's own connection (needs Premium): playlists, search, the queue and other devices, from the console and the phone.</li>
+      </ul>
+      <p><b>Fade out</b> lowers the music smoothly and pauses it, then puts the level back for next time. <b>Fade in</b> starts it and brings it up. The seconds box sets how long. <b>Fade from … to …</b> goes between two levels you choose, for example from 60 down to 20 under a speaker. Fades are smooth, without crackle, and a new fade takes over from one in progress.</p>
+    </section>
+
+    <section id="output">
+      <h2>Sound and projector <span class="tag">Standard · Extra</span></h2>
+      <ul>
+        <li><b>Audio device</b>: switch between the mixer, speakers and headphones. The system level moves smoothly instead of jumping.</li>
+        <li><b>Display mode</b> (Windows): PC only, Duplicate, Extend, Projector only. Use <b>Extend</b>: the slides go to the projector and Stagio stays on your screen. On a Mac: Duplicate and Extend (close the lid for the projector only).</li>
+        <li><b>Show slides on</b>: which screen PowerPoint uses for the show (all editions).</li>
+        <li><b>PowerPoint presenter view</b>: with a projector, PowerPoint opens its own presenter view on top of Stagio. <b>Hide</b> keeps it away (all editions).</li>
+      </ul>
+    </section>
+
+    <section id="cues">
+      <h2>Cues <span class="tag">Standard · Extra</span></h2>
+      <p>A cue runs several steps from one button, for example <i>Opening: music out, start the show at slide 1</i>, or <i>Break: black screen, music in</i>. Edit them under <b>Cues → Edit</b>: music steps (fades, levels, a Premium playlist), slide steps (start, go to, next, black, white, end), output steps (sound device, system level, display mode) and waits. Fades run in the background, so the next step happens right away.</p>
+      <figure><img src="img/cue-editor.png" alt="The cue editor" loading="lazy"></figure>
+      <ul>
+        <li>Keys <b>1–9</b> run the first nine cues. To avoid accidents, set them to need <b>Shift + 1–9</b> under Keys.</li>
+        <li><b>Run by itself at a slide</b>: the cue runs when the show reaches that slide going forward (not when stepping back). It stays with the slide if slides are added or moved.</li>
+        <li>Whoever builds the slides can do the same by writing <code>[cue: Break]</code> (the start of a cue's name) in a slide's notes.</li>
+        <li><b>Auto on / off</b> switches all of these at once.</li>
+      </ul>
+    </section>
+
+    <section id="run">
+      <h2>Run of show <span class="tag">Extra</span></h2>
+      <p>Plan the event as a list of parts. During the event, <b>Next part</b> (or the key <b>G</b>) does what the next part needs.</p>
+      <figure><img src="img/run-editor.png" alt="The run of show editor" loading="lazy"></figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part</th><th>When it starts, Stagio…</th></tr></thead>
+          <tbody>
+            <tr><td>Slides</td><td>opens the file and starts its show from the slide you chose; the previous file's show ends afterwards, so the projector never shows the desktop. Optionally fades the music out.</td></tr>
+            <tr><td>Countdown</td><td>shows a countdown full screen on the projector, to a clock time or for the planned minutes. <a href="#countdown">More</a></td></tr>
+            <tr><td>Music</td><td>blacks out the projector (if a show is up) and fades the music in: a break, walking in or out.</td></tr>
+            <tr><td>Manual</td><td>only times it; nothing changes on screen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Any part can also run a cue. Click <b>Edit… → New</b> to start from the usual shape of an event, then rename, reorder and fill in the files. For the next event of the same kind, <b>Duplicate</b> it and change only the files.</p>
+      <figure><img src="img/console-break.png" alt="The break: black screen, music in, the run bar on part 4 of 6" loading="lazy"><figcaption>The break: the projector is black, the music comes in, and the bar shows 9:56 left in this part.</figcaption></figure>
+      <ul>
+        <li>The bar shows every part: red is now, faded parts are done, a green line means that part's file is already open and ready.</li>
+        <li>Time left in this part turns amber when it runs over and red after two minutes. Next to it: how far ahead or behind the whole event is.</li>
+        <li>The next file opens in the background while the current part is on, without a window, so changing speakers takes about half a second.</li>
+        <li>Clicking a part asks <i>Go here?</i> first, so a stray click changes nothing. <b>Back</b> returns to the previous part; <b>Stop</b> ends the run (the slide show keeps going).</li>
+        <li>A missing file is shown in red in the bar and in the pre-event check. If Stagio is restarted, the run carries on where it was.</li>
+      </ul>
+    </section>
+
+    <section id="countdown">
+      <h2>Opening countdown <span class="tag">Extra</span></h2>
+      <figure><img src="img/countdown.png" alt="The countdown on the projector: Starting soon, 9:57, Welcome to the Spring Community Gathering" loading="lazy"></figure>
+      <p>A countdown part fills the projector with a big countdown, a title such as <i>Starting soon</i>, and notices that take turns underneath. Count to a clock time (for example 10:00) or for the planned minutes. The music can fade in when it starts and fades out to end exactly at zero; then the run goes on to the next part by itself.</p>
+      <p>It needs the projector as a second screen in <b>Extend</b> mode. With one screen, the countdown opens as a window on the computer instead, so you can check it without covering the console.</p>
+    </section>
+
+    <section id="stage">
+      <h2>Stage display and messages <span class="tag">Extra</span></h2>
+      <p>A phone or tablet on the lectern shows the speaker or host the slide on the projector, the next one, the notes in large type and the time left, and any message you send from the console, such as <i>5 minutes left</i>.</p>
+      <figure><img src="img/stage.png" alt="The stage display on a tablet: the message Please wrap up, the slide on screen, the next slide and the notes" loading="lazy"><figcaption>The stage display with a message the speaker has seen.</figcaption></figure>
+      <ul>
+        <li><b>Connect</b>: in the console, <b>Remote → Stage display</b>, and scan the code with the speaker's phone or tablet. Or open the address shown and enter the <b>stage PIN</b>, which is different from the console's PIN.</li>
+        <li><b>View only</b>: the stage display can't change slides, play music or open the console, so you can hand it to anyone. Several can be open at once (speaker, host, musicians).</li>
+        <li>The top shows the run of show's part and its time left (amber when over, red after two minutes), or how long this part has run; and the time of day. <b>Awake</b> keeps the screen on; <b>Full</b> hides the browser bars. If the link drops, it says <i>Not connected</i> in large letters and reconnects by itself.</li>
+        <li><b>Messages</b>: click <b>Stage</b> at the top right of the console. Send a ready-made message (you can change the list) or type your own. It flashes full screen on the stage display, then stays at the top until you clear it. When the speaker taps it, the console shows <b>Seen</b>. In testing a message appeared in about a tenth of a second.</li>
+        <li>Tick <b>The speaker can change slides</b> to give the stage display Prev and Next buttons (off by default).</li>
+      </ul>
+      <p>The stage display needs Wi-Fi: the venue's, Stagio's own (Windows) or the phone's hotspot (Mac). Bluetooth is too slow for pictures.</p>
+    </section>
+
+    <section id="check">
+      <h2>Before the event</h2>
+      <figure><img src="img/check.png" alt="The pre-event check" loading="lazy"></figure>
+      <p><b>Check</b> (top right) lists what Stagio can verify: the presentation, slide pictures, slow text, the run of show and its files, the projector, presenter view, sound, music, cues, connected phones and stage displays. Amber or red needs a look, often with a button that fixes it. What it can't check is what the projector and speakers really show and play: look at the screen and play a few seconds of music before people arrive.</p>
+    </section>
+
+    <section id="keys">
+      <h2>Keyboard</h2>
+      <p>Works while the Stagio window is in front. Presentation clickers work too.</p>
+      <div class="table-wrap">
+        <table class="keys">
+          <tbody>
+            <tr><td>→ &nbsp;Space &nbsp;Enter &nbsp;PgDn</td><td>Next slide</td></tr>
+            <tr><td>← &nbsp;PgUp &nbsp;Backspace</td><td>Previous slide</td></tr>
+            <tr><td>B or .</td><td>Black screen on/off</td></tr>
+            <tr><td>W or ,</td><td>White screen on/off</td></tr>
+            <tr><td>F5</td><td>Start the show</td></tr>
+            <tr><td>Home / End</td><td>First / last slide</td></tr>
+            <tr><td>P · N</td><td>Music play/pause · next track</td></tr>
+            <tr><td>O · I</td><td>Fade out · fade in</td></tr>
+            <tr><td>↑ / ↓</td><td>Music level ±5</td></tr>
+            <tr><td>1–9 (or Shift + 1–9)</td><td>Run a cue</td></tr>
+            <tr><td>G</td><td>Next part of the run of show</td></tr>
+            <tr><td>?</td><td>Show the keys</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="help">
+      <h2>Troubleshooting</h2>
+      <dl class="faq">
+        <dt>The phone can't open Stagio</dt>
+        <dd>The phone must be on the same Wi-Fi (not mobile data or a guest network), and Stagio must be running. Some routers keep devices apart ("AP isolation"). When Windows first asks whether Stagio may use the network, allow it. Security software may block port 7300. If a chat app's scanner doesn't open the link, use the phone's camera, or type the address and PIN. No luck: use Stagio Wi-Fi or Bluetooth.</dd>
+        <dt>“Windows protected your PC”, or the installer does nothing</dt>
+        <dd>More info → Run anyway. If nothing happens at all, antivirus software is still checking the new file; try again in a few minutes.</dd>
+        <dt>PowerPoint's own presenter view covers Stagio</dt>
+        <dd>Output → PowerPoint presenter view → Hide. It applies the next time a show starts.</dd>
+        <dt>A file opened from an e-mail or download is read-only</dt>
+        <dd>It is in PowerPoint's Protected View. Click the amber <b>Protected View · enable editing</b> tag.</dd>
+        <dt>The music doesn't respond (Local)</dt>
+        <dd>Open the Spotify app and play any track once; after that Stagio can control it, also when paused.</dd>
+        <dt>Switching editions</dt>
+        <dd>Open the other edition. The one that is running asks whether to switch; the settings, PIN, cues and runs of show come along. Uninstalling one edition keeps the shared settings for the others.</dd>
+        <dt>Where are my settings?</dt>
+        <dd>Windows: <code>%APPDATA%\OneDesk</code>, still under Stagio's earlier name (the previous version is kept as a backup and used if the file is ever damaged). Mac: <code>~/Library/Application Support/OneDesk</code>.</dd>
+      </dl>
+    </section>
+  </main>
+
+  <footer>
+    <span class="dim">Stagio · Lite and Standard Beta 1.1 · Extra Beta 1.2</span>
+    <span><a href="../">Download</a> · <a href="https://github.com/ngxu/stagio/releases">All versions</a> · <a href="https://github.com/ngxu/stagio">Source code</a> · <a href="https://github.com/ngxu/stagio/blob/main/CODE_SIGNING_POLICY.md">Code signing policy</a></span>
+  </footer>
+</body>
+</html>

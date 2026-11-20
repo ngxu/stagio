@@ -1,0 +1,97 @@
+{
+  "name": "stagio",
+  "version": "1.1.0-beta",
+  "description": "One-person control desk for PowerPoint, Spotify and audio/projector output",
+  "author": "Stagio",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://ngxu.github.io/stagio/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngxu/stagio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ngxu/stagio/issues"
+  },
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js --open",
+    "dev": "node server.js",
+    "app": "electron .",
+    "dist:win": "node build/make-installer.js",
+    "dist:mac": "sh build/make-mac-helper.sh && electron-builder --mac dmg zip",
+    "icons": "powershell -ExecutionPolicy Bypass -File build/make-icons.ps1",
+    "stress": "node test/stress.js",
+    "mac:helper": "sh build/make-mac-helper.sh"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "app.onedesk.console",
+    "productName": "Stagio",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "server.js",
+      "lib/**",
+      "ps/**",
+      "public/**",
+      "electron/**",
+      "build/icon.ico",
+      "build/icon.png",
+      "editions.json",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "ps/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Stagio",
+      "artifactName": "Stagio-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "artifactName": "Stagio-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Stagio controls PowerPoint and Spotify for you during a presentation.",
+        "NSBluetoothAlwaysUsageDescription": "Stagio uses Bluetooth so an Android phone can be the remote when there is no Wi-Fi."
+      },
+      "extraResources": [
+        {
+          "from": "build/mac-helper/stagio-mac-helper",
+          "to": "mac-helper/stagio-mac-helper"
+        }
+      ]
+    }
+  }
+}

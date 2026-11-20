@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-Hans" data-only="zh" data-other="./">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0d">
+  <title>Stagio · 使用说明</title>
+  <meta name="description" content="Stagio 使用说明：一个人在一个控台上掌控 PowerPoint、音乐和投影，手机就是遥控器。三个版本、主控台、手机遥控、音乐淡入淡出、Cue、节目流程和开场倒数。">
+  <link rel="icon" type="image/png" href="../icons/favicon.png">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="../site.css">
+  <link rel="alternate" hreflang="en" href="./">
+  <script src="../lang.js"></script>
+</head>
+<body class="guide">
+  <header class="top">
+    <img src="../icons/icon-192.png" alt="" width="40" height="40">
+    <div>
+      <h1>Stagio 使用说明</h1>
+      <p class="dim">一个人掌控投影片、音乐和投影输出</p>
+    </div>
+    <nav class="topnav"><a href="../">下载</a><a href="zh.html" aria-current="page">使用说明</a><button class="langbtn" type="button" data-lang-toggle>English</button></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <video controls preload="metadata" playsinline poster="img/video-poster.png">
+          <source src="stagio-explainer.mp4" type="video/mp4">
+        </video>
+        <p class="dim small">视频为英文字幕，约 1 分 47 秒。</p>
+      </div>
+      <div class="hero-text">
+        <p class="lead">大部分活动里，一个人翻投影片，一个人放音乐，还有人管投影和音响。Stagio 把这些都集中在一个控台上，一个人就能掌控，在电脑上或用手机都可以。</p>
+        <p>它配合你本来就在用的 PowerPoint 和同一台电脑上的 Spotify 应用，不会改动你的投影片。</p>
+        <p><a class="btn primary" href="../">下载 Windows 和 Mac 版</a></p>
+      </div>
+    </section>
+
+    <nav class="toc" aria-label="目录">
+      <a href="#editions">版本</a>
+      <a href="#install">安装</a>
+      <a href="#console">主控台</a>
+      <a href="#phone">手机遥控</a>
+      <a href="#music">音乐和淡入淡出</a>
+      <a href="#output">音响和投影</a>
+      <a href="#cues">Cue</a>
+      <a href="#run">节目流程</a>
+      <a href="#countdown">开场倒数</a>
+      <a href="#stage">讲台提示屏</a>
+      <a href="#check">开场前检查</a>
+      <a href="#keys">键盘</a>
+      <a href="#help">常见问题</a>
+    </nav>
+
+    <section id="editions">
+      <h2>选哪个版本？</h2>
+      <p>Stagio 有三个版本。每个版本只显示自己有的功能，用不到的功能不会出现，也不用设定。大的版本包含小的版本的全部功能。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Lite</th><th>Standard</th><th>Extra</th></tr></thead>
+          <tbody>
+            <tr><td>给谁用</td><td>自己讲自己投影片的人</td><td>一个人在后面控投影片、音乐和投影</td><td>负责整场活动的人</td></tr>
+            <tr><td>翻页、黑屏/白屏、备注、计时、真实缩略图、手机遥控、开场前检查</td><td>有</td><td>有</td><td>有</td></tr>
+            <tr><td>音乐和淡入淡出、音响输出、投影模式、Cue</td><td>–</td><td>有</td><td>有</td></tr>
+            <tr><td>节目流程、开场倒数、讲台提示屏和控台讯息</td><td>–</td><td>–</td><td>有</td></tr>
+            <tr><td>第一次要设定的</td><td>打开文件，手机扫码</td><td>再选音乐方式、接投影机</td><td>再排节目流程</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>三个版本可以装在同一台电脑上，设置、PIN 和 Cue 共用，同一时间只开一个：打开另一个版本时，会问你要不要换过去。版本号（Beta 1.0 起）每个版本、每个系统各自往上加。</p>
+      <figure><img src="img/console-lite.png" alt="Stagio Lite：投影片、备注、计时，以及投影片放在哪个屏幕" loading="lazy"><figcaption>Stagio Lite：投影片、备注和计时；没有音乐、Cue 和节目流程。</figcaption></figure>
+    </section>
+
+    <section id="install">
+      <h2>安装</h2>
+      <div class="cols">
+        <div>
+          <h3>Windows</h3>
+          <ol>
+            <li>在<a href="../">下载页面</a>下载你要的版本并打开。需要 Windows 10 或 11、PowerPoint 2016 或 Microsoft 365；放音乐需要 Spotify 应用。</li>
+            <li>如果 Windows 显示“Windows 已保护你的电脑”：点“更多信息 → 仍要运行”。安装程序还没有代码签名（正在申请开源项目的免费签名）。</li>
+            <li>双击后没反应：防毒软件还在检查这个新文件，等几分钟再试。</li>
+            <li>Stagio 以前叫 OneDesk。已经装了 OneDesk：装同一个版本的 Stagio（例如 OneDesk Extra → Stagio Extra）就会直接升级，设置、PIN、Cue 都保留；0.x 的 OneDesk 装 Standard。Windows 防火墙会再问一次，请允许“专用网络”。</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Mac <span class="tag warn">测试版</span></h3>
+          <ol>
+            <li>下载 Apple 芯片或 Intel 版，拖到“应用程序”。</li>
+            <li>第一次打开时，按住 Control 点它 → 打开（没有 Apple 签名）。</li>
+            <li>macOS 问是否允许它控制 PowerPoint 和 Spotify 时，选“好”。投影画面实时截取需要 macOS 14 和“屏幕录制”权限。</li>
+            <li>还没有在 Mac 上配合真的 PowerPoint 测试过，正式使用前请先试一次。</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="console">
+      <h2>主控台</h2>
+      <p>在 PowerPoint 里打开投影片，或在 Stagio 点 <b>Open…</b>（最近的文件、贴上路径，或把文件拖进窗口）。按 <b>Start</b> 或 F5 开始放映。</p>
+      <figure class="annotated">
+        <div class="shot">
+          <img src="img/console.png" alt="放映中的 Stagio Extra 主控台">
+          <span class="pin" style="left:17%;top:7.4%">1</span>
+          <span class="pin" style="left:47%;top:2.4%">2</span>
+          <span class="pin" style="left:2.6%;top:20%">3</span>
+          <span class="pin" style="left:43.5%;top:20%">4</span>
+          <span class="pin" style="left:43.5%;top:44%">5</span>
+          <span class="pin" style="left:2.6%;top:63.5%">6</span>
+          <span class="pin" style="left:2.6%;top:79%">7</span>
+          <span class="pin" style="left:64.6%;top:13%">8</span>
+          <span class="pin" style="left:64.6%;top:59.5%">9</span>
+          <span class="pin" style="left:4.4%;top:93.8%">10</span>
+        </div>
+        <figcaption>放映中的 Stagio Extra。Lite 只有投影片的部分；Standard 没有节目流程。</figcaption>
+      </figure>
+      <ol class="legend">
+        <li><b>节目流程</b>（Extra）：活动的每一段、剩余时间、快了还是慢了。<a href="#run">详情</a></li>
+        <li><b>计时</b>：放映已经多久、这一页多久、这一段多久（点两下重新计时）。</li>
+        <li><b>Program</b>：现在投影上显示的画面，直接从投影取得。</li>
+        <li><b>Preview</b>：下一页。</li>
+        <li>投影上那一页的<b>备注</b>；A− / A+ 调整这台设备上的字号。</li>
+        <li><b>Prev、Black、White、Next</b>。Black 和 White 让投影变黑或变白，再按一次回来。</li>
+        <li><b>所有页面</b>：点一页就跳过去。缩略图是真实的页面，在 PowerPoint 里修改后会跟着更新，放映中也一样。</li>
+        <li><b>音乐</b>：播放、切歌、音量和淡入淡出。<a href="#music">详情</a></li>
+        <li><b>输出</b>：音响设备、系统音量、投影模式。<a href="#output">详情</a></li>
+        <li><b>Cue</b>：一个按钮执行一串动作。<a href="#cues">详情</a></li>
+      </ol>
+      <p>左上角显示 PowerPoint 的状态（LIVE、BLACK、第几页）、音乐，以及和这台电脑的连线。<b>Layout</b> 可以调整各区大小、隐藏用不到的区块、左右互换；每台电脑各自保存。</p>
+      <p><b>很慢的文件</b>（Windows）：有些从 Canva 导出的文件，在 Windows 版 PowerPoint 里翻页很慢，原因是装饰文字用了电脑上没有的字体。Stagio 会显示 <b>Slow in PowerPoint</b>；按 <b>Speed up</b> 会把那些文字变成它们自己的图片，看起来一样，翻页变快。可以另存一份加速副本，也可以直接加速原文件（这台电脑会先保留一份之前的版本）。</p>
+    </section>
+
+    <section id="phone">
+      <h2>手机就是遥控器</h2>
+      <div class="cols media-right">
+        <div>
+          <ol>
+            <li>手机和电脑连同一个 Wi-Fi。</li>
+            <li>在电脑上点 <b>Remote</b>，用手机相机扫二维码。或者输入显示的网址，再输入 6 位数 PIN。</li>
+            <li>加到主屏幕（步骤写在 Remote 窗口里），以后像 App 一样打开。</li>
+          </ol>
+          <p>手机上是同一个控台：Program、Preview、备注、计时，以及四个翻页按钮，滚动时会固定在屏幕上。<b>Awake</b> 让屏幕保持亮着，<b>Full</b> 隐藏浏览器的工具栏。在 Settings 里可以让顶栏和按钮跟着滚动，也可以调整备注字号。</p>
+          <p>连续输错 8 次 PIN，那支手机会被锁 5 分钟。</p>
+          <h3>没有 Wi-Fi？</h3>
+          <ul>
+            <li><b>Stagio Wi-Fi</b>（Windows）：电脑开一个自己的网络。扫第一个二维码加入网络，再扫第二个打开 Stagio。iPhone 和 Android 都可以。</li>
+            <li><b>手机热点</b>（Mac）：打开手机的热点，让 Mac 连上，再扫码。</li>
+            <li><b>蓝牙</b>（Android、Chrome）：<a href="../remote/">蓝牙遥控</a>不需要任何网络，可以翻页、黑屏/白屏、执行 Cue、控制音乐。会显示页码，但不显示投影片画面。</li>
+          </ul>
+        </div>
+        <figure class="phone"><img src="img/phone.png" alt="节目流程进行中，手机上的 Stagio" loading="lazy"></figure>
+      </div>
+    </section>
+
+    <section id="music">
+      <h2>音乐和淡入淡出 <span class="tag">Standard · Extra</span></h2>
+      <p>有两种方式控制 Spotify：</p>
+      <ul>
+        <li><b>Local</b>：控制这台电脑上的 Spotify 应用，免费账号也可以。播放、暂停、切歌、音量和淡入淡出；歌单在 Spotify 应用里选。</li>
+        <li><b>Premium</b>：用 Spotify 官方的连线（需要 Premium）：在控台和手机上就能选歌单、搜索、加入待播、切换播放设备。</li>
+      </ul>
+      <p><b>Fade out</b> 把音乐平滑地降下来并暂停，然后把音量恢复，下次播放时是原来的音量。<b>Fade in</b> 开始播放并把音量升上来。秒数框决定要多久。<b>Fade from … to …</b> 在你选的两个音量之间过渡，例如讲员开始讲话时从 60 降到 20。淡入淡出很平滑，没有杂音；新的淡入淡出会接手正在进行的那一个。</p>
+    </section>
+
+    <section id="output">
+      <h2>音响和投影 <span class="tag">Standard · Extra</span></h2>
+      <ul>
+        <li><b>音响设备</b>：在音控台、喇叭和耳机之间切换。系统音量会平滑过渡，不会突然跳动。</li>
+        <li><b>投影模式</b>（Windows）：仅电脑、复制、扩展、仅投影。建议用<b>扩展（Extend）</b>：投影片放到投影机上，Stagio 留在你的屏幕上。Mac 上只有复制和扩展（只用投影机时合上盖子）。</li>
+        <li><b>Show slides on</b>：PowerPoint 放映时用哪个屏幕（所有版本都有）。</li>
+        <li><b>PowerPoint presenter view</b>：接上投影机时，PowerPoint 会在 Stagio 上面打开它自己的演示者视图。选 <b>Hide</b> 就不会出现（所有版本都有）。</li>
+      </ul>
+    </section>
+
+    <section id="cues">
+      <h2>Cue <span class="tag">Standard · Extra</span></h2>
+      <p>一个 Cue 用一个按钮执行好几个步骤，例如“开场：音乐淡出，从第 1 页开始放映”，或“中场：黑屏，音乐淡入”。在 <b>Cues → Edit</b> 里编辑：音乐步骤（淡入淡出、音量、Premium 歌单）、投影片步骤（开始、跳页、下一页、黑屏、白屏、结束）、输出步骤（音响设备、系统音量、投影模式）和等待。淡入淡出在背景进行，所以下一个步骤会马上开始。</p>
+      <figure><img src="img/cue-editor.png" alt="Cue 编辑画面" loading="lazy"></figure>
+      <ul>
+        <li>按 <b>1–9</b> 执行前 9 个 Cue。为了避免误按，可以在 Keys 里改成要按 <b>Shift + 1–9</b>。</li>
+        <li><b>翻到某一页时自动执行</b>：放映往前翻到那一页时执行（往回翻不会）。前面插入或移动页面后，Cue 仍然跟着那一页。</li>
+        <li>做投影片的人也可以在那一页的备注里写 <code>[cue: Break]</code>（写 Cue 名称的开头即可），效果一样。</li>
+        <li><b>Auto on / off</b> 一次打开或关掉全部自动执行。</li>
+      </ul>
+    </section>
+
+    <section id="run">
+      <h2>节目流程 <span class="tag">Extra</span></h2>
+      <p>把活动排成一段一段。活动中按 <b>Next part</b>（或键盘 <b>G</b>），Stagio 就做下一段需要的事。</p>
+      <figure><img src="img/run-editor.png" alt="节目流程编辑画面" loading="lazy"></figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>类型</th><th>这一段开始时，Stagio 会……</th></tr></thead>
+          <tbody>
+            <tr><td>Slides</td><td>打开那个文件，从你选的那一页开始放映；上一个文件的放映随后才结束，所以投影上不会露出桌面。可选：同时淡出音乐。</td></tr>
+            <tr><td>Countdown</td><td>在投影机上全屏显示倒数，倒数到某个时间，或倒数预定的分钟数。<a href="#countdown">详情</a></td></tr>
+            <tr><td>Music</td><td>让投影变黑（如果正在放映），音乐淡入：中场、进场、散场用。</td></tr>
+            <tr><td>Manual</td><td>只计时，画面不变。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>每一段也可以顺便执行一个 Cue。点 <b>Edit… → New</b> 会先给一个常见的活动流程，再改名、调整顺序、选好文件。下一次同样的活动按 <b>Duplicate</b> 复制一份，只要换文件。</p>
+      <figure><img src="img/console-break.png" alt="中场：投影变黑、音乐淡入，Run 栏在 6 段中的第 4 段" loading="lazy"><figcaption>中场：投影变黑，音乐淡入，Run 栏显示这一段还剩 9:56。</figcaption></figure>
+      <ul>
+        <li>Run 栏显示每一段：红色是现在这一段，变淡的是已经过去的，底下有绿线的表示那一段的文件已经打开好了。</li>
+        <li>这一段的剩余时间超时会变琥珀色，超过 2 分钟变红色。旁边显示整场比预定快了或慢了多少。</li>
+        <li>下一段的文件会在这一段进行时先在后台打开（不开窗口），所以换讲员大约只要半秒。</li>
+        <li>直接点某一段时会先问 <i>Go here?</i>，误点不会切换。<b>Back</b> 回到上一段；<b>Stop</b> 结束流程（投影片不会被关掉）。</li>
+        <li>找不到的文件会在 Run 栏和开场前检查里用红字标出来。Stagio 重开后，流程会停在原来那一段继续。</li>
+      </ul>
+    </section>
+
+    <section id="countdown">
+      <h2>开场倒数 <span class="tag">Extra</span></h2>
+      <figure><img src="img/countdown.png" alt="投影上的倒数：Starting soon、9:57、Welcome to the Spring Community Gathering" loading="lazy"></figure>
+      <p>倒数这一段会在投影机上全屏显示大大的倒数时间、一行标题（例如 <i>Starting soon</i>），以及在下方轮流显示的几句通知。可以倒数到某个时间（例如 10:00），或倒数预定的分钟数。开始时音乐可以淡入，到 0 时刚好淡出完，然后自动进入下一段。</p>
+      <p>需要把投影机当作第二个屏幕，设成<b>扩展（Extend）</b>。只有一个屏幕时，倒数会以普通窗口显示在电脑上，方便检查，但不会盖住主控台。</p>
+    </section>
+
+    <section id="stage">
+      <h2>讲台提示屏和控台讯息 <span class="tag">Extra</span></h2>
+      <p>把手机或平板放在讲台上，讲员或主持人就能看到投影上的这一页、下一页、放大的备注和剩余时间，还有你从控台发过去的讯息，例如“还有 5 分钟”。</p>
+      <figure><img src="img/stage.png" alt="平板上的讲台提示屏：讯息 Please wrap up、投影上的这一页、下一页和备注" loading="lazy"><figcaption>讲员已经看到讯息的提示屏。</figcaption></figure>
+      <ul>
+        <li><b>连接</b>：在控台点 <b>Remote → Stage display</b>，用讲员的手机或平板扫码。或者打开显示的网址，输入<b>提示屏 PIN</b>（和控台的 PIN 不同）。</li>
+        <li><b>只能看</b>：提示屏不能翻页、不能控制音乐，也打不开控台，所以可以放心交给任何人。可以同时开好几个（讲员、主持人、乐手）。</li>
+        <li>顶部显示节目流程的这一段和剩余时间（超时变琥珀色，超过 2 分钟变红色），或这一段已经进行多久；还有现在的时间。<b>Awake</b> 让屏幕保持亮着，<b>Full</b> 隐藏浏览器的工具栏。连线中断时会用大字显示 <i>Not connected</i>，并自动重连。</li>
+        <li><b>发讯息</b>：点控台右上角的 <b>Stage</b>。按一下现成的讯息（可以修改），或自己输入一句。讯息会先在提示屏上全屏闪出，之后留在顶部，直到你清除。讲员点一下，控台上就显示 <b>Seen</b>。实测讯息大约 0.1 秒就出现。</li>
+        <li>勾选 <b>The speaker can change slides</b>，提示屏会出现 Prev 和 Next 按钮（默认关闭）。</li>
+      </ul>
+      <p>提示屏需要 Wi-Fi：场地的、Stagio 自己的（Windows）或手机热点（Mac）。蓝牙太慢，传不了画面。</p>
+    </section>
+
+    <section id="check">
+      <h2>开场前检查</h2>
+      <figure><img src="img/check.png" alt="开场前检查" loading="lazy"></figure>
+      <p>右上角的 <b>Check</b> 列出 Stagio 能检查的项目：投影片、缩略图、慢文字、节目流程和它的文件、投影机、演示者视图、声音、音乐、Cue、已连接的手机和提示屏。琥珀色或红色的要看一下，很多项目旁边就有修正的按钮。它没办法检查的，是投影机和喇叭实际上显示和播放出来的效果：观众到场前，请看一下投影，放几秒音乐试试。</p>
+    </section>
+
+    <section id="keys">
+      <h2>键盘</h2>
+      <p>Stagio 窗口在最前面时有效。翻页笔也可以用。</p>
+      <div class="table-wrap">
+        <table class="keys">
+          <tbody>
+            <tr><td>→ &nbsp;Space &nbsp;Enter &nbsp;PgDn</td><td>下一页</td></tr>
+            <tr><td>← &nbsp;PgUp &nbsp;Backspace</td><td>上一页</td></tr>
+            <tr><td>B 或 .</td><td>黑屏开/关</td></tr>
+            <tr><td>W 或 ,</td><td>白屏开/关</td></tr>
+            <tr><td>F5</td><td>开始放映</td></tr>
+            <tr><td>Home / End</td><td>第一页 / 最后一页</td></tr>
+            <tr><td>P · N</td><td>音乐播放/暂停 · 下一首</td></tr>
+            <tr><td>O · I</td><td>淡出 · 淡入</td></tr>
+            <tr><td>↑ / ↓</td><td>音乐音量 ±5</td></tr>
+            <tr><td>1–9（或 Shift + 1–9）</td><td>执行 Cue</td></tr>
+            <tr><td>G</td><td>节目流程的下一段</td></tr>
+            <tr><td>?</td><td>显示快捷键</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="help">
+      <h2>常见问题</h2>
+      <dl class="faq">
+        <dt>手机打不开 Stagio</dt>
+        <dd>手机必须连同一个 Wi-Fi（不能用流动数据或访客网络），电脑上的 Stagio 必须正在运行。有些路由器会把设备隔开（“AP 隔离”）。Windows 第一次问 Stagio 能不能使用网络时，要选允许。安全软件可能挡住 7300 端口。聊天软件的扫码打不开时，改用手机相机，或手动输入网址和 PIN。还是不行：用 Stagio Wi-Fi 或蓝牙。</dd>
+        <dt>“Windows 已保护你的电脑”，或安装程序没反应</dt>
+        <dd>点“更多信息 → 仍要运行”。如果完全没反应，是防毒软件还在检查新文件，等几分钟再试。</dd>
+        <dt>PowerPoint 自己的演示者视图盖住了 Stagio</dt>
+        <dd>输出 → PowerPoint presenter view → Hide。下次开始放映时生效。</dd>
+        <dt>从电子邮件或下载打开的文件是只读的</dt>
+        <dd>它在 PowerPoint 的“受保护的视图”里。点琥珀色的 <b>Protected View · enable editing</b> 标签。</dd>
+        <dt>音乐没有反应（Local）</dt>
+        <dd>打开 Spotify 应用，随便播放一首歌；之后 Stagio 就能控制它，暂停时也可以。</dd>
+        <dt>换版本</dt>
+        <dd>打开另一个版本。正在运行的那个会问你要不要换过去；设置、PIN、Cue 和节目流程都会带过去。卸载其中一个版本，共用的设置会留给其他版本。</dd>
+        <dt>我的设置存在哪里？</dt>
+        <dd>Windows：<code>%APPDATA%\OneDesk</code>，沿用 Stagio 以前的名字（上一版会自动留作备份，文件损坏时会用它恢复）。Mac：<code>~/Library/Application Support/OneDesk</code>。</dd>
+      </dl>
+    </section>
+  </main>
+
+  <footer>
+    <span class="dim">Stagio · Lite 和 Standard Beta 1.1 · Extra Beta 1.2</span>
+    <span><a href="../">下载</a> · <a href="https://github.com/ngxu/stagio/releases">所有版本</a> · <a href="https://github.com/ngxu/stagio">源代码</a> · <a href="https://github.com/ngxu/stagio/blob/main/CODE_SIGNING_POLICY.md">Code signing policy</a></span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0d">
+  <title>Stagio Bluetooth remote</title>
+  <meta name="description" content="Control Stagio on the computer (Windows or Mac) over Bluetooth, when no Wi-Fi works. Android, Chrome.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="../icons/favicon.png">
+  <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="remote.css">
+</head>
+<body>
+  <header class="bar">
+    <b class="brand">Stagio</b><span class="sub">Bluetooth</span>
+    <span class="grow"></span>
+    <span class="st" id="conn"><i></i><em>Not connected</em></span>
+    <button class="btn sm" id="awake" title="Keep this screen on">Awake</button>
+  </header>
+
+  <main>
+    <section id="unsupported" class="card hidden">
+      <h2>Bluetooth isn't available here</h2>
+      <p>This page needs <b>Chrome on an Android phone</b> (Bluetooth switched on).</p>
+      <p>iPhone: use <b>Stagio Wi-Fi</b> instead. On the Stagio PC: Remote → <i>No Wi-Fi, or the phone can't reach this PC?</i> → Stagio Wi-Fi → Start, then scan the two codes. With Stagio on a Mac: turn on the phone's hotspot and join it from the Mac (the steps are under Remote).</p>
+      <p class="dim">中文：此页面需要 Android 手机上的 Chrome。iPhone 请改用 Stagio Wi-Fi（电脑上点 Remote → No Wi-Fi… → Stagio Wi-Fi → Start，再扫两个二维码）。Mac 上的 Stagio：打开手机热点，让 Mac 连上（步骤在 Remote 里）。</p>
+    </section>
+
+    <section id="setup" class="card">
+      <h2>Connect to the Stagio computer</h2>
+      <ol>
+        <li>On the computer (Windows or Mac): Remote → <i>No Wi-Fi…?</i> → Bluetooth → <b>Start</b>.</li>
+        <li>Enter the 6-digit PIN shown there, tap <b>Connect</b>, and choose the computer in the list.</li>
+      </ol>
+      <label class="pin">PIN <input id="pin" class="mono" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="••••••"></label>
+      <div class="row">
+        <button class="btn primary wide" id="connect">Connect</button>
+        <button class="btn wide hidden" id="reconnect"></button>
+      </div>
+      <p class="msg" id="msg"></p>
+      <p class="dim">中文：先在电脑上 Remote → No Wi-Fi… → Bluetooth → Start；在这里输入电脑上显示的 PIN，点 Connect，选择那台电脑。</p>
+    </section>
+
+    <section id="live" class="hidden">
+      <div class="now">
+        <span class="label">Slide</span>
+        <span class="mono big" id="slide">–</span>
+        <span class="tag" id="state"></span>
+        <span class="tag warn hidden" id="build"></span>
+      </div>
+      <div class="pad">
+        <button class="btn xl" data-c="prev">Prev</button>
+        <button class="btn xl primary" data-c="next">Next</button>
+        <button class="btn" data-c="black">Black</button>
+        <button class="btn" data-c="white">White</button>
+      </div>
+      <div class="row">
+        <button class="btn wide" data-c="start" id="startBtn">Start show</button>
+        <button class="btn wide" data-c="end" id="endBtn">End show</button>
+      </div>
+      <div class="label gap">Cues</div>
+      <div class="cues" id="cues"><span class="dim">No cues</span></div>
+      <div class="label gap">Music <span class="dim" id="music"></span></div>
+      <div class="row three">
+        <button class="btn" data-c="fadeOut">Fade out</button>
+        <button class="btn" data-c="play">Play / pause</button>
+        <button class="btn" data-c="fadeIn">Fade in</button>
+      </div>
+      <p class="msg" id="liveMsg"></p>
+      <p class="dim small">Shows the slide number, not pictures: Bluetooth is too slow for images. With Wi-Fi (or Stagio Wi-Fi) the phone gets the full console.</p>
+    </section>
+  </main>
+
+  <script src="remote.js"></script>
+</body>
+</html>

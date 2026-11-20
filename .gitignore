@@ -1,0 +1,7 @@
+# installed packages and build output
+node_modules/
+dist/
+# settings, PIN, Spotify sign-in and slide images of the dev copy: never in the repository
+data/
+*.log
+build/mac-helper/

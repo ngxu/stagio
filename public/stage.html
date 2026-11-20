@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0c0d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Stage">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <title>Stagio · Stage</title>
+  <!-- Stagio Extra: the stage display. A phone or tablet on the lectern shows the speaker the
+       slide on the projector, the next one, the notes, the time left and messages from the
+       console. View only; Prev/Next appear only when the console allows them. -->
+  <style>
+    :root {
+      --bg: #0b0c0d; --surface: #131516; --raise: #1c1f21; --line: #24272a; --line-hi: #34393d;
+      --text: #eef0f2; --dim: #9aa1a8; --red: #e5484d; --green: #3dd68c; --amber: #f0a020;
+      --sans: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei UI", sans-serif;
+      --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+      --notes: 28px;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-text-size-adjust: 100%; }
+    body { display: flex; flex-direction: column; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    .hidden { display: none !important; }
+
+    .bar { flex: none; display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .part { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+    .part small { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .part b { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .left { font: 600 40px var(--mono); white-space: nowrap; }
+    .left.over { color: var(--amber); } .left.late { color: var(--red); }
+    .clock { font: 600 22px var(--mono); color: var(--dim); white-space: nowrap; }
+    .tb { height: 38px; padding: 0 12px; border: 1px solid var(--line-hi); border-radius: 4px; background: var(--raise); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .tb.lit { border-color: var(--green); color: var(--green); }
+
+    .msg { flex: none; display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: var(--amber); color: #000; font-size: 26px; font-weight: 700; border: 0; width: 100%; text-align: left; }
+    .msg span { flex: 1; }
+    .msg em { font-style: normal; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .7; white-space: nowrap; }
+    .msg.seen { background: #3a3220; color: var(--amber); }
+
+    main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px; padding: 14px 16px; }
+    .now, .side { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+    .nextbox { flex: none; display: flex; flex-direction: column; gap: 10px; }
+    .notesbox { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+    .label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); display: flex; justify-content: space-between; gap: 10px; }
+    .label .tally { color: #fff; background: var(--red); padding: 1px 7px; border-radius: 2px; }
+    .label .tally.next { background: none; color: var(--green); border: 1px solid var(--green); padding: 0 6px; }
+    .frame { position: relative; aspect-ratio: 16 / 9; background: #000; border: 1px solid var(--line-hi); overflow: hidden; flex: none; }
+    .now .frame { border: 2px solid var(--red); }
+    .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+    .frame .ph { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 10px; color: var(--dim); font-size: 22px; }
+    .frame .state { position: absolute; inset: 0; display: grid; place-items: center; font: 700 28px var(--sans); letter-spacing: .12em; }
+    .frame .state.black { background: #000; color: var(--red); }
+    .frame .state.white { background: #f4f4f2; color: #c33; }
+    .notes { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); background: var(--surface); padding: 12px 14px; font-size: var(--notes); line-height: 1.3; white-space: pre-wrap; }
+    .notes:empty::before { content: 'No notes on this slide'; color: var(--dim); font-size: 16px; }
+    .sizer { display: flex; gap: 6px; }
+    .sizer button { width: 40px; height: 30px; border: 1px solid var(--line-hi); border-radius: 4px; background: var(--raise); font-size: 14px; font-weight: 700; }
+    .flip { flex: none; display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; padding: 0 16px 14px; }
+    .flip button { height: 74px; border: 1px solid var(--line-hi); border-radius: 6px; background: var(--raise); font-size: 22px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .flip .go { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+    .wait { flex: 1; display: grid; place-items: center; text-align: center; padding: 20px; }
+    .wait h1 { font-size: 34px; margin: 0 0 10px; }
+    .wait p { color: var(--dim); font-size: 18px; margin: 0; }
+
+    .flash { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; text-align: center; padding: 6vw; background: var(--amber); color: #000; border: 0; width: 100%; }
+    .flash b { font-size: min(11vw, 120px); line-height: 1.1; }
+    .flash small { position: absolute; bottom: 5vh; left: 0; right: 0; font-size: 18px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+    .lost { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; text-align: center; background: rgba(11, 12, 13, .92); }
+    .lost b { display: block; font-size: 44px; color: var(--red); }
+    .lost span { color: var(--dim); font-size: 18px; }
+
+    .login { flex: 1; display: grid; place-items: center; padding: 24px; }
+    .login form { width: min(380px, 100%); display: flex; flex-direction: column; gap: 12px; }
+    .login h1 { font-size: 24px; margin: 0; }
+    .login p { color: var(--dim); margin: 0; }
+    .login input { height: 56px; font: 600 28px var(--mono); letter-spacing: .3em; text-align: center; background: var(--surface); color: var(--text); border: 1px solid var(--line-hi); border-radius: 4px; }
+    .login button { height: 52px; border: 0; border-radius: 4px; background: var(--text); color: var(--bg); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .login .err { color: var(--red); min-height: 20px; }
+    .awake-video { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    @media (orientation: portrait), (max-width: 760px) {
+      main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .side { display: grid; grid-template-columns: 0.9fr 1.1fr; align-items: start; }
+      .side .nextbox { min-width: 0; }
+      .side .notesbox { min-height: 0; height: 100%; display: flex; flex-direction: column; gap: 10px; }
+      .left { font-size: 30px; }
+      .clock { display: none; }
+      .msg { font-size: 22px; }
+    }
+    @media (max-width: 760px) and (orientation: portrait) {
+      .side { grid-template-columns: 1fr; }
+      .side .nextbox { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- sign in with the stage PIN (the console shows it under Remote → Stage display) -->
+  <div class="login hidden" id="login">
+    <form id="loginForm">
+      <h1>Stage display</h1>
+      <p>Enter the stage PIN shown on the Stagio computer under Remote.</p>
+      <input id="pin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="••••••">
+      <button>Show</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </div>
+
+  <div class="bar hidden" id="bar">
+    <div class="part"><small id="partLabel">Segment</small><b id="partName"></b></div>
+    <div class="left" id="left">–</div>
+    <div class="clock" id="clock">--:--</div>
+    <button class="tb" id="btnAwake" title="Keep this screen on">Awake</button>
+    <button class="tb hidden" id="btnFull" title="Full screen">Full</button>
+  </div>
+  <button class="msg hidden" id="msg"><span id="msgText"></span><em id="msgHint">Tap when seen</em></button>
+
+  <main class="hidden" id="stage">
+    <section class="now">
+      <div class="label"><span class="tally">On screen</span><span id="nowNum"></span></div>
+      <div class="frame"><img id="nowImg" alt=""><div class="ph" id="nowPh"></div><div class="state hidden" id="nowState"></div></div>
+    </section>
+    <section class="side">
+      <div class="nextbox">
+        <div class="label"><span class="tally next">Next</span><span id="nextNum"></span></div>
+        <div class="frame"><img id="nextImg" alt=""><div class="ph" id="nextPh"></div></div>
+      </div>
+      <div class="notesbox">
+        <div class="label"><span>Notes</span><span class="sizer"><button id="smaller" aria-label="Smaller notes">A−</button><button id="bigger" aria-label="Bigger notes">A+</button></span></div>
+        <div class="notes" id="notes"></div>
+      </div>
+    </section>
+  </main>
+  <div class="wait hidden" id="wait"><div><h1 id="waitTitle">Waiting for the slide show</h1><p id="waitSub">This screen follows the projector once the show starts.</p></div></div>
+  <div class="flip hidden" id="flip"><button id="btnPrev">Prev</button><button class="go" id="btnNext">Next</button></div>
+
+  <button class="flash hidden" id="flash"><b id="flashText"></b><small>Tap when seen</small></button>
+  <div class="lost hidden" id="lost"><div><b>Not connected</b><span>Reconnecting to the Stagio computer…</span></div></div>
+
+  <script>
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const store = {
+    get(k) { try { return localStorage.getItem(`onedesk.${k}`); } catch { return null; } },
+    set(k, v) { try { if (v) localStorage.setItem(`onedesk.${k}`, v); else localStorage.removeItem(`onedesk.${k}`); } catch { /* private mode */ } },
+  };
+
+  // ---- access: the stage key from the QR code (?key=), kept on this device ----
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('key')) { store.set('stageKey', qs.get('key')); history.replaceState(null, '', location.pathname); }
+  let KEY = store.get('stageKey') || '';
+  const withKey = (u) => (KEY ? `${u}${u.includes('?') ? '&' : '?'}key=${encodeURIComponent(KEY)}` : u);
+  const post = (p, body) => fetch(withKey(p), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+
+  function showLogin(msg) {
+    for (const id of ['#bar', '#stage', '#wait', '#flip', '#msg', '#lost']) $(id).classList.add('hidden');
+    $('#login').classList.remove('hidden');
+    $('#loginErr').textContent = msg || '';
+    $('#pin').focus();
+  }
+  $('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await fetch('/api/stage/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: $('#pin').value }) });
+      const j = await r.json();
+      if (!j.ok) { $('#loginErr').textContent = j.error || 'Wrong PIN'; return; }
+      KEY = j.data.key; store.set('stageKey', KEY);
+      $('#login').classList.add('hidden');
+      connect();
+    } catch { $('#loginErr').textContent = 'No connection to the Stagio computer'; }
+  });
+
+  // ---- live state ----
+  let S = null;
+  let offset = 0;        // the Stagio computer's clock minus this device's
+  let lastMsgAt = 0;
+  let es = null;
+  async function connect() {
+    try {
+      const r = await fetch(withKey('/api/ping'), { cache: 'no-store' });
+      if (r.status === 401 || r.status === 403) { store.set('stageKey', ''); KEY = ''; showLogin(); return; }
+    } catch { /* not reachable yet: the stream keeps trying */ }
+    if (es) es.close();
+    es = new EventSource(withKey('/api/stage/events'));
+    lastMsgAt = Date.now();
+    es.onmessage = (e) => {
+      lastMsgAt = Date.now();
+      const d = JSON.parse(e.data);
+      if (d.now) offset = d.now - Date.now();
+      if ('show' in d) { S = d; render(); }
+      setLost(false);
+    };
+    es.onerror = () => { if (es.readyState === EventSource.CLOSED) setTimeout(connect, 2000); };
+  }
+  function setLost(on) { $('#lost').classList.toggle('hidden', !on); }
+  setInterval(() => { if (es && Date.now() - lastMsgAt > 9000) { setLost(true); connect(); } }, 3000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && es && Date.now() - lastMsgAt > 6000) connect(); });
+
+  // ---- drawing ----
+  const fmt = (ms) => {
+    const s = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = String(s % 60).padStart(2, '0');
+    return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+  };
+  function pic(img, ph, p) {
+    const src = S.show && p && p.v ? withKey(`/api/ppt/thumb?path=${encodeURIComponent(S.show.path)}&id=${p.id}&v=${encodeURIComponent(p.v)}`) : '';
+    if (src) { if (img.getAttribute('src') !== src) img.src = src; img.classList.remove('hidden'); ph.textContent = ''; }
+    else { img.removeAttribute('src'); img.classList.add('hidden'); ph.textContent = p ? `Slide ${p.index}${p.title ? ` · ${p.title}` : ''}` : 'End of the presentation'; }
+  }
+  let seenMsg = store.get('stageSeenMsg') || '';
+  function render() {
+    $('#bar').classList.remove('hidden');
+    const show = S.show && S.show.slide ? S.show : null;
+    $('#stage').classList.toggle('hidden', !show);
+    $('#wait').classList.toggle('hidden', !!show);
+    $('#flip').classList.toggle('hidden', !(show && S.canFlip));
+    if (!show) {
+      $('#waitTitle').textContent = S.show ? 'The slide show has ended' : 'Waiting for the slide show';
+      $('#waitSub').textContent = S.run ? `Now: ${S.run.part}${S.run.next ? ` · next: ${S.run.next}` : ''}` : 'This screen follows the projector once the show starts.';
+    } else {
+      $('#nowNum').textContent = `${show.slide} / ${show.total}${show.clicks ? ` · step ${show.click}/${show.clicks}` : ''}`;
+      pic($('#nowImg'), $('#nowPh'), S.current);
+      pic($('#nextImg'), $('#nextPh'), S.next);
+      $('#nextNum').textContent = S.next ? String(S.next.index) : '';
+      const st = $('#nowState');
+      st.classList.toggle('hidden', !['black', 'white'].includes(show.state));
+      st.className = `state ${show.state === 'black' ? 'black' : show.state === 'white' ? 'white' : 'hidden'}`;
+      st.textContent = show.state === 'black' ? 'BLACK' : show.state === 'white' ? 'WHITE' : '';
+      const n = $('#notes');
+      if (n.textContent !== (S.notes || '').trim()) { n.textContent = (S.notes || '').trim(); n.scrollTop = 0; }
+    }
+    // message
+    const m = S.message;
+    $('#msg').classList.toggle('hidden', !m);
+    if (m) {
+      $('#msgText').textContent = m.text;
+      $('#msg').classList.toggle('seen', m.acked);
+      $('#msgHint').textContent = m.acked ? 'Seen' : 'Tap when seen';
+      if (String(m.id) !== seenMsg) {
+        seenMsg = String(m.id); store.set('stageSeenMsg', seenMsg);
+        if (!m.acked) { $('#flashText').textContent = m.text; $('#flash').classList.remove('hidden'); clearTimeout(render.flashT); render.flashT = setTimeout(() => $('#flash').classList.add('hidden'), 6000); }
+      }
+    } else $('#flash').classList.add('hidden');
+    tick();
+  }
+  function ack() {
+    $('#flash').classList.add('hidden');
+    if (S?.message && !S.message.acked) post('/api/stage/ack', { id: S.message.id }).catch(() => {});
+  }
+  $('#flash').onclick = ack;
+  $('#msg').onclick = ack;
+
+  /** The time line in the bar: the run of show's part and its time left, or how long this part has run. */
+  function tick() {
+    const now = Date.now() + offset;
+    const d = new Date(now);
+    $('#clock').textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    if (!S) return;
+    const left = $('#left');
+    left.className = 'left';
+    const r = S.run;
+    if (r) {
+      $('#partLabel').textContent = `Part ${r.index + 1} of ${r.count}${r.next ? ` · next: ${r.next}` : ''}`;
+      $('#partName').textContent = r.part;
+      if (r.countdown) left.textContent = fmt(r.countdown - now);
+      else if (r.planned) {
+        const rest = r.planned - (now - r.segAt);
+        left.textContent = rest >= 0 ? `${fmt(rest)} left` : `+${fmt(-rest)} over`;
+        if (rest < 0) left.classList.add(rest < -120000 ? 'late' : 'over');
+      } else left.textContent = fmt(now - r.segAt);
+    } else {
+      const t = S.timer || {};
+      $('#partLabel').textContent = t.segBy ? 'Segment' : 'Show';
+      $('#partName').textContent = t.segBy || S.show?.name || 'Stagio';
+      left.textContent = t.segAt && S.show ? fmt(now - t.segAt) : '–';
+    }
+  }
+  setInterval(tick, 1000);
+
+  // ---- notes size (this device) ----
+  const SIZES = [18, 22, 26, 30, 36, 44, 54, 64];
+  let size = SIZES.includes(Number(store.get('stageNotes'))) ? Number(store.get('stageNotes')) : 30;
+  const applySize = () => { document.documentElement.style.setProperty('--notes', `${size}px`); };
+  $('#smaller').onclick = () => { size = SIZES[Math.max(0, SIZES.indexOf(size) - 1)]; store.set('stageNotes', String(size)); applySize(); };
+  $('#bigger').onclick = () => { size = SIZES[Math.min(SIZES.length - 1, SIZES.indexOf(size) + 1)]; store.set('stageNotes', String(size)); applySize(); };
+  applySize();
+
+  // ---- Prev / Next (only when the console allows it) ----
+  const flip = (p) => post(p).then((r) => r.json()).then((j) => { if (!j.ok) alert(j.error); }).catch(() => {});
+  $('#btnNext').onclick = () => flip('/api/stage/next');
+  $('#btnPrev').onclick = () => flip('/api/stage/prev');
+
+  // ---- keep the screen on (as in the phone remote): Wake Lock, or a silent video ----
+  const awake = { want: store.get('stageAwake') !== '0', lock: null, video: null, audio: null };
+  const awakeActive = () => !!awake.lock || (!!awake.video && !awake.video.paused);
+  const renderAwake = () => $('#btnAwake').classList.toggle('lit', awakeActive());
+  function silentVideo() {
+    const c = document.createElement('canvas'); c.width = c.height = 16;
+    const g = c.getContext('2d'); let n = 0;
+    const draw = () => { g.fillStyle = n++ % 2 ? '#000' : '#010101'; g.fillRect(0, 0, 16, 16); };
+    draw(); setInterval(draw, 1000);
+    const stream = c.captureStream(1);
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ac.createOscillator(); const gain = ac.createGain(); gain.gain.value = 0;
+      const out = ac.createMediaStreamDestination(); osc.connect(gain).connect(out); osc.start();
+      stream.addTrack(out.stream.getAudioTracks()[0]); awake.audio = ac;
+    } catch { /* no sound track */ }
+    const v = document.createElement('video');
+    v.setAttribute('playsinline', ''); v.disableRemotePlayback = true; v.srcObject = stream; v.className = 'awake-video';
+    v.addEventListener('pause', renderAwake); v.addEventListener('playing', renderAwake);
+    document.body.appendChild(v);
+    return v;
+  }
+  async function awakeOn() {
+    if (awakeActive()) return true;
+    if (navigator.wakeLock) {
+      try { awake.lock = await navigator.wakeLock.request('screen'); awake.lock.addEventListener('release', () => { awake.lock = null; renderAwake(); }); return true; } catch { /* try the video */ }
+    }
+    try { awake.video ||= silentVideo(); awake.audio?.resume?.(); await awake.video.play(); return true; } catch { return false; }
+  }
+  function awakeOff() { awake.lock?.release().catch(() => {}); awake.lock = null; awake.video?.pause(); awake.audio?.suspend?.(); }
+  $('#btnAwake').onclick = async () => {
+    awake.want = !awakeActive();
+    store.set('stageAwake', awake.want ? '' : '0');
+    if (!awake.want) awakeOff();
+    else if (!(await awakeOn())) alert('This browser cannot keep the screen on. Set the screen timeout (Auto-Lock) to the longest setting for the event.');
+    renderAwake();
+  };
+  // Starting it needs a tap: on by default, it starts on the first tap anywhere and comes back
+  // when the page does.
+  const resume = (e) => { if (e?.target?.closest?.('#btnAwake')) return; if (awake.want && !document.hidden && !awakeActive()) awakeOn().then(renderAwake); };
+  document.addEventListener('pointerdown', resume);
+  document.addEventListener('visibilitychange', resume);
+  renderAwake();
+
+  // ---- full screen ----
+  const root = document.documentElement;
+  const fsReq = root.requestFullscreen || root.webkitRequestFullscreen;
+  const fsExit = document.exitFullscreen || document.webkitExitFullscreen;
+  const fsNow = () => document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsReq && (document.fullscreenEnabled || document.webkitFullscreenEnabled)) {
+    $('#btnFull').classList.remove('hidden');
+    $('#btnFull').onclick = () => { (fsNow() ? fsExit.call(document) : fsReq.call(root, { navigationUI: 'hide' }))?.catch?.(() => {}); };
+    const sync = () => $('#btnFull').classList.toggle('lit', !!fsNow());
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+  }
+
+  if (KEY) connect(); else showLogin();
+  </script>
+</body>
+</html>

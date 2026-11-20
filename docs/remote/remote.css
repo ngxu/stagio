@@ -1,0 +1,73 @@
+/* Stagio Bluetooth remote: the console's look (flat, dark, hairlines, tally colours). */
+:root {
+  --bg: #0b0c0d; --surface: #131516; --raise: #1c1f21; --raise-hi: #24282b;
+  --line: #24272a; --line-hi: #34393d; --text: #d8dbde; --dim: #858b91; --faint: #5b6166;
+  --red: #e5484d; --green: #3dd68c; --amber: #f0a020;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, "Microsoft YaHei UI", sans-serif;
+  --mono: "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); }
+body { padding: 52px 14px calc(20px + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
+.hidden { display: none !important; }
+.dim { color: var(--dim); }
+.small { font-size: 12px; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.grow { flex: 1; }
+.label { font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.label.gap { margin-top: 18px; margin-bottom: 6px; }
+
+.bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 44px; z-index: 5;
+  display: flex; align-items: center; gap: 8px; padding: 0 14px;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; }
+.sub { font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.st i { width: 8px; height: 8px; background: var(--faint); }
+.st em { font-style: normal; font-family: var(--mono); }
+.st.ok i { background: var(--green); }
+.st.warn i { background: var(--amber); }
+.st.bad i { background: var(--red); }
+
+.card { border: 1px solid var(--line-hi); background: var(--surface); padding: 14px; margin-top: 12px; }
+.card h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.card ol { padding-left: 18px; margin: 0 0 12px; }
+.card p { margin: 10px 0 0; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 12px; border-radius: 3px; cursor: pointer;
+  background: var(--raise); border: 1px solid var(--line-hi); color: var(--text);
+  font: 600 13px var(--sans); text-transform: uppercase; letter-spacing: .06em;
+}
+.btn:active { background: var(--raise-hi); }
+.btn.sm { min-height: 28px; font-size: 11px; padding: 0 9px; }
+.btn.primary { background: var(--text); border-color: var(--text); color: #0b0c0d; }
+.btn.wide { width: 100%; }
+.btn.xl { min-height: 96px; font-size: 18px; }
+.btn.lit { color: var(--green); border-color: var(--green); }
+
+.pin { display: grid; gap: 6px; margin: 4px 0 12px; font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.pin input {
+  height: 52px; font-size: 26px; letter-spacing: .3em; text-align: center; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line-hi); border-radius: 3px;
+}
+.row { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 8px; }
+.row.three { grid-template-columns: 1fr 1fr 1fr; }
+.msg { min-height: 1.2em; color: var(--dim); }
+.msg.bad { color: var(--amber); }
+
+.now { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 12px; flex-wrap: wrap; }
+.big { font-size: 34px; }
+.tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border: 1px solid var(--line-hi); border-radius: 2px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.tag:empty { display: none; }
+.tag.live { background: var(--red); border-color: var(--red); color: #fff; }
+.tag.warn { color: var(--amber); border-color: rgba(240, 160, 32, .5); }
+
+.pad { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.cues { display: grid; gap: 6px; }
+.btn.cue { justify-content: flex-start; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.cue .ck { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line-hi); color: var(--dim); font-size: 12px; }
