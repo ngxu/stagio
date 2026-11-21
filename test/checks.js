@@ -150,6 +150,57 @@ async function autoCueChecks() {
   ac.stop();
 }
 
+
+// ---------------------------------------------------------------- headphone preview (stand-in helper)
+
+async function previewChecks() {
+  const { Preview } = require('../lib/preview');
+  const calls = [];
+  let devices = [{ id: 'spk', name: 'Speakers', isDefault: true }];
+  const control = { call: async (cmd, a) => {
+    calls.push(a);
+    // the helper reports which programs it sent somewhere
+    return { available: true, changed: 0, apps: [{ name: 'chrome', label: 'Chrome', route: a.on ? 'phones' : 'default', active: true }], touched: a.on ? ['chrome'] : [] };
+  } };
+  const cfg = {};
+  let saves = 0; let changes = 0;
+  const pv = new Preview({ control, cfg, save: () => saves++, pro: false, musicApp: () => 'Spotify', devices: () => devices, onChange: () => changes++ });
+  check('preview starts off, with its settings created', pv.on === false && cfg.preview && cfg.preview.phones === '' && Array.isArray(cfg.preview.touched));
+  let err = null;
+  try { await pv.setOn(true); } catch (e) { err = e.message; }
+  check('it cannot be turned on before the headphones are chosen', /headphones/i.test(err || ''), err || 'no error');
+  pv.devicesChanged();                                            // first poll: nothing happens
+  devices = [...devices, { id: 'hp', name: 'USB Headset', isDefault: false }];
+  pv.devicesChanged();
+  check('a new sound device is offered as the headphones', pv.prompt?.kind === 'new' && pv.prompt.id === 'hp');
+  await pv.configure({ phones: 'hp' });
+  await pv.setOn(true);
+  const last = calls[calls.length - 1];
+  check('on: the music app and PowerPoint stay on the speakers, the rest goes to the headphones',
+    last.on === true && last.phones === 'hp' && last.stay.includes('POWERPNT') && last.stay.includes('Spotify') && last.room === '', JSON.stringify(last.stay));
+  check('programs it moved are remembered in the settings (to set them back later)', JSON.stringify(cfg.preview.touched) === '["chrome"]' && saves > 0);
+  devices = devices.filter((d) => d.id !== 'hp');
+  pv.devicesChanged();
+  check('unplugging the headphones turns it off and says so', pv.on === false && /unplugged/i.test(pv.notice?.text || ''));
+  await pv.tick();
+  check('...and the next round sets the moved programs back', calls[calls.length - 1].on === false && JSON.stringify(cfg.preview.touched) === '[]');
+  devices = [...devices, { id: 'hp', name: 'USB Headset', isDefault: false }];
+  pv.devicesChanged();
+  check('plugging the chosen headphones in again asks to turn it on', pv.prompt?.kind === 'plugged' && pv.on === false);
+  err = null;
+  try { await pv.setApp('chrome', 'room'); } catch (e) { err = e.message; }
+  check('Standard has no per-app choices (Extra)', /Extra/.test(err || ''));
+  const pro = new Preview({ control, cfg: { preview: { phones: 'hp' } }, save: () => {}, pro: true, musicApp: () => '', devices: () => devices });
+  await pro.setApp('vlc', 'room');
+  await pro.configure({ keep: ['Teams', 'Teams', ' obs64 '] });
+  await pro.setOn(true);
+  const l2 = calls[calls.length - 1];
+  check('Extra: an app chosen for the speakers and the kept apps are passed on',
+    l2.overrides.vlc === 'room' && l2.stay.includes('Teams') && l2.stay.includes('obs64') && l2.stay.filter((x) => x === 'Teams').length === 1, JSON.stringify(l2));
+  await pro.shutdown();
+  check('quitting turns it off first', calls[calls.length - 1].on === false && pro.on === false);
+}
+
 // ---------------------------------------------------------------- which slide image is shown
 
 // ---------------------------------------------------------------- music fades (local mode)
@@ -481,6 +532,21 @@ async function serverChecks() {
     console.log('      (no LAN address: LAN checks skipped)');
   }
 
+  // Headphone preview: Standard (basic) and Extra (full), on Windows; not in Lite.
+  const pvStatus = await post('/api/preview', {}, JSON.stringify({ on: true })).then((r) => r.status);
+  const stPv = await get('/api/state').then((r) => r.json());
+  const types = await get('/api/cues/types').then((r) => (r.ok ? r.json() : {}));
+  if (!ed.features.preview) {
+    check('Lite has no headphone preview', pvStatus === 403 && !stPv.preview, `status ${pvStatus}`);
+  } else if (stPv.preview) {
+    check('headphone preview is there, and full only in Extra', stPv.preview.pro === !!ed.features.previewPro && stPv.preview.on === false);
+    check('it does not turn on without headphones chosen', pvStatus >= 400, `status ${pvStatus}`);
+    const perApp = await post('/api/preview/app', {}, JSON.stringify({ name: 'checks', route: 'room' })).then((r) => r.status);
+    check(ed.features.previewPro ? 'Extra: per-app choices are accepted' : 'Standard: no per-app choices', ed.features.previewPro ? perApp === 200 : perApp >= 400, `status ${perApp}`);
+    if (ed.features.previewPro) await post('/api/preview/app', {}, JSON.stringify({ name: 'checks', route: 'auto' }));
+    check('the cue step for it only in Extra', !!types['audio.preview'] === !!ed.features.previewPro);
+  }
+
   // No Spotify Web API (Premium) any more: its sign-in pages are gone.
   const gone = [await get('/spotify/login', { redirect: 'manual' }).then((r) => r.status), await get('/api/spotify/playlists').then((r) => r.status)];
   check('the Spotify Premium sign-in and its API are gone', gone.every((x) => x === 404), gone.join(' '));
@@ -670,6 +736,7 @@ async function serverChecks() {
     if (!process.argv.includes('--no-helper')) await helperChecks();
     configChecks();
     await autoCueChecks();
+    await previewChecks();
     await fadeChecks();
     imageChecks();
     editionChecks();

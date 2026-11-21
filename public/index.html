@@ -210,6 +210,24 @@
         <p class="hint" id="audioSwitchHint"></p>
       </div>
 
+      <!-- other apps only in the headphones (Standard: basic; Extra: speakers device, per-app choices) -->
+      <div class="needs-preview hidden" id="previewGroup">
+        <div class="label gap">Headphone preview</div>
+        <div class="pv-row">
+          <select id="pvPhones" title="Your headphones: they must be a sound device of their own in Windows"></select>
+          <div class="seg sm" id="pvMode">
+            <button data-pv-on="1" title="The music app and PowerPoint stay on the speakers; every other app plays only in the headphones">On</button>
+            <button data-pv-on="0" title="Every app plays where Windows sends it">Off</button>
+          </div>
+        </div>
+        <div class="needs-previewPro pv-pro">
+          <label class="pv-row"><span class="label">Speakers</span><select id="pvRoom"><option value="">Default output</option></select></label>
+          <div class="list pv-apps" id="pvApps"></div>
+          <label class="pv-keep"><span class="label">Always on the speakers</span><input type="text" id="pvKeep" placeholder="Program names, e.g. Teams, obs64" title="Programs that stay on the speakers besides the music app and PowerPoint, separated by commas"></label>
+        </div>
+        <p class="hint" id="pvHint"></p>
+      </div>
+
       <div id="displayGroup" class="needs-displayMode">
         <div class="label gap">Display mode</div>
         <div class="seg" id="displayModes">
@@ -539,6 +557,7 @@
 
   <div class="drop-veil">Drop to open in PowerPoint</div>
   <div class="toast" id="toast"></div>
+  <div class="pv-prompt hidden" id="pvPrompt"><span id="pvPromptText"></span><button class="btn sm primary" id="pvPromptYes">Turn on</button><button class="btn sm" id="pvPromptNo">Not now</button></div>
   <script src="app.js"></script>
 </body>
 </html>

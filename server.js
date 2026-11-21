@@ -11,6 +11,7 @@ const config = require('./lib/config');
 const { CueRunner, STEP_TYPES } = require('./lib/cues');
 const { AutoCues } = require('./lib/autocues');
 const { RunOfShow } = require('./lib/runofshow');
+const { Preview } = require('./lib/preview');
 const platform = require('./lib/platform').create(); // Windows, or Mac (beta)
 // Lite, Standard or Extra (lib/edition.js): what this Stagio shows and does.
 const edition = require('./lib/edition').current();
@@ -25,7 +26,16 @@ const music = () => (ed.music && cfg.features.music === 'local' ? localMusic : n
 // The music app chosen in Stagio ('' = whatever plays), and the one followed last (for "Open").
 localMusic.sourceFn = () => cfg.music.source;
 localMusic.lastAppFn = () => cfg.music.lastApp;
-const cues = new CueRunner({ ppt, output, music });
+// Headphone preview (Standard basic, Extra full; Windows only): other apps only in the headphones.
+const preview = ed.preview && platform.features.preview && platform.helpers?.music
+  ? new Preview({
+    control: platform.helpers.music, cfg, save: saveCfg, pro: ed.previewPro,
+    musicApp: () => (music() && localMusic.state?.session ? localMusic.state.app?.process || '' : ''),
+    devices: () => output.audio?.devices || [],
+    onChange: () => broadcast(),
+  })
+  : null;
+const cues = new CueRunner({ ppt, output, music, preview: () => (ed.previewPro ? preview : null) });
 
 // Every "start show" (button, key, cue) applies the display chosen under Output. Once Stagio has
 // changed PowerPoint's own setting, going back to "Automatic" has to be written back as well.
@@ -210,6 +220,7 @@ const needs = (feature, what) => (req, res, next) => (ed[feature] ? next()
   : res.status(403).json({ ok: false, error: `${what} is not part of ${edition.name}` }));
 app.use(['/api/music', '/api/features'], needs('music', 'Music'));
 app.use('/api/audio', needs('audio', 'Sound control'));
+app.use('/api/preview', needs('preview', 'Headphone preview'));
 app.use('/api/display', needs('displayMode', 'Display mode'));
 app.use('/api/cues', needs('cues', 'Cues'));
 app.use('/api/run', needs('run', 'The run of show'));
@@ -291,6 +302,7 @@ function buildParts() {
     platform: { os: platform.os, beta: !!platform.beta, ...platform.features },
     features: cfg.features,
     localMusic: ed.music && cfg.features.music === 'local' ? localMusic.summary() : null,
+    preview: preview ? preview.summary() : null,
     audio: output.audio,
     displays: output.displays,
     displayMode: output.displayMode,
@@ -1008,11 +1020,23 @@ app.get('/api/music/art', (req, res) => {
 app.post('/api/audio/device', act((req) => output.setDevice(req.body.id), () => output.pollAudio()));
 app.post('/api/audio/volume', act((req) => output.setVolume(req.body.value), () => output.pollAudio()));
 app.post('/api/audio/mute', act((req) => output.setMute(req.body.mute), () => output.pollAudio()));
+
+// ---------------- headphone preview (Standard basic, Extra full) ----------------
+const needPreview = () => { if (!preview) throw new Error('Headphone preview needs Windows'); return preview; };
+app.post('/api/preview', act(async (req) => {
+  const b = req.body || {};
+  if (['phones', 'room', 'keep'].some((k) => b[k] !== undefined)) await needPreview().configure(b);
+  if (typeof b.on === 'boolean') await needPreview().setOn(b.on);
+}));
+app.post('/api/preview/app', act((req) => needPreview().setApp(req.body?.name, req.body?.route)));
+app.post('/api/preview/dismiss', act(() => needPreview().dismiss()));
 app.post('/api/display/mode', act((req) => output.setDisplayMode(req.body.mode)));
 
 // ---------------- cues ----------------
 
-app.get('/api/cues/types', (req, res) => res.json(STEP_TYPES));
+// Step types this edition offers (the headphone-preview step is Extra's, on Windows).
+app.get('/api/cues/types', (req, res) => res.json(Object.fromEntries(Object.entries(STEP_TYPES)
+  .filter(([, t]) => !t.needs || (ed[t.needs] && preview)))));
 app.put('/api/cues', act((req) => {
   if (!Array.isArray(req.body)) throw new Error('Invalid cue list');
   cfg.cues = req.body.map((c, i) => {
@@ -1169,7 +1193,12 @@ loop(async () => {
     }
   }
 }, 1000);
-loop(() => (ed.audio ? output.pollAudio() : null), 3000);
+loop(async () => {
+  if (!ed.audio) return;
+  await output.pollAudio();
+  preview?.devicesChanged();
+}, 3000);
+loop(() => preview?.tick(), 200);
 loop(() => {
   for (const r of cfg.recent) {
     if (!isFilePath(r.path) || /^https?:/i.test(r.path)) continue;
@@ -1218,6 +1247,8 @@ process.on('uncaughtException', (e) => console.error('[uncaught]', e));
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e));
 
 const stop = () => platform.stop();
+/** Before the desktop app quits: apps sent to the headphones go back to the default output. */
+const beforeQuit = () => (preview ? preview.shutdown() : Promise.resolve());
 /** For the desktop app: is anything depending on Stagio right now? */
 const status = () => ({
   live: !!ppt.state.show,
@@ -1235,4 +1266,4 @@ if (require.main === module) {
 /** The desktop app hands over its countdown window (show/hide on the projector). */
 const setScreenHost = (host) => runOfShow?.setScreen(host);
 
-module.exports = { ready, stop, status, url, edition, setScreenHost };
+module.exports = { ready, stop, beforeQuit, status, url, edition, setScreenHost };

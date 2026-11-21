@@ -228,6 +228,7 @@ function applyState(patch) {
   if (has('ppt', 'slides', 'program', 'cues', 'recent', 'fastCopy')) renderSlides();
   if (has('localMusic', 'features')) renderMusic();
   if (has('audio', 'displays', 'displayMode', 'platform', 'ppt', 'settings')) renderOutput();
+  if (has('preview', 'audio', 'localMusic')) renderPreview();
   if (has('cues', 'cueRunning', 'slides', 'settings')) renderCues();
   if (has('recent')) renderRecent();
   if (has('fastCopy', 'ppt')) renderFastCopy(patch.fastCopy && !full ? patch.fastCopy : null);
@@ -249,6 +250,9 @@ const edHas = (feature) => (['run', 'stage'].includes(feature) ? S?.edition?.fea
 function applyEdition() {
   const e = S.edition || {};
   for (const f of ['music', 'audio', 'displayMode', 'cues', 'run', 'stage']) document.body.classList.toggle(`no-${f}`, !edHas(f));
+  // headphone preview: Standard and Extra, on Windows (the server sends it only there)
+  document.body.classList.toggle('no-preview', !S.preview);
+  document.body.classList.toggle('no-previewPro', !S.preview?.pro);
   $('#brandName').textContent = e.name || 'Stagio';
   document.title = e.name || 'Stagio';
   $('#betaTag').textContent = e.label || '';
@@ -1070,6 +1074,89 @@ $('#musicMode').addEventListener('click', (e) => {
   if (b && b.dataset.music !== musicMode()) post('/api/features', { music: b.dataset.music });
 });
 
+// ---------------- headphone preview ----------------
+// While on, the music app and PowerPoint stay on the speakers and every other app plays only in
+// the headphones (lib/preview.js). Standard: headphones + On/Off. Extra: also the speakers device,
+// apps kept on the speakers and a choice per app.
+
+let pvNoticeSeen = 0;
+function renderPreview() {
+  const pv = S.preview;
+  document.body.classList.toggle('no-preview', !pv);
+  document.body.classList.toggle('no-previewPro', !pv?.pro);
+  $('#previewGroup').classList.toggle('hidden', !pv);
+  if (!pv) { $('#pvPrompt').classList.add('hidden'); return; }
+  const devs = S.audio?.devices || [];
+  const def = devs.find((d) => d.isDefault);
+  // headphones: every output except the speakers (the default output in Standard)
+  const phonesOpts = ['<option value="">Choose headphones…</option>']
+    .concat(devs.filter((d) => d.id === pv.phones || (pv.pro ? d.id !== pv.room : !d.isDefault)).map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`));
+  if (pv.phones && !devs.some((d) => d.id === pv.phones)) phonesOpts.push(`<option value="${esc(pv.phones)}">Headphones (not connected)</option>`);
+  setOptions($('#pvPhones'), phonesOpts.join(''), pv.phones);
+  $$('#pvMode button').forEach((b) => b.classList.toggle('on', (b.dataset.pvOn === '1') === !!pv.on));
+  if (pv.pro) {
+    const roomOpts = [`<option value="">Default output${def ? ` (${esc(def.name)})` : ''}</option>`]
+      .concat(devs.filter((d) => d.id !== pv.phones).map((d) => `<option value="${esc(d.id)}">${esc(d.name)}</option>`));
+    setOptions($('#pvRoom'), roomOpts.join(''), pv.room);
+    const keep = (pv.keep || []).join(', ');
+    if (document.activeElement !== $('#pvKeep') && $('#pvKeep').value !== keep) $('#pvKeep').value = keep;
+    const rows = (pv.apps || []).map((a) => {
+      const set = pv.overrides?.[a.name];
+      return `<div class="row" data-pv-app="${esc(a.name)}">
+        <span class="txt"><span class="t1">${esc(a.label)}${a.active ? '<span class="tag-playing">playing</span>' : ''}</span>
+        <span class="t2">${a.route === 'room' ? 'speakers' : a.route === 'phones' ? 'headphones' : 'default'}${set ? ' · your choice' : ''}</span></span>
+        ${set ? '<button class="auto" data-pv-route="auto" title="Back to the rule: music app and PowerPoint on the speakers, the rest in the headphones">Auto</button>' : ''}
+        <span class="seg sm"><button data-pv-route="room" class="${a.route === 'room' ? 'on' : ''}">Speakers</button><button data-pv-route="phones" class="${a.route === 'phones' ? 'on' : ''}">Headphones</button></span>
+      </div>`;
+    }).join('');
+    const html = rows || `<p class="dim">${pv.on ? 'No app is making sound yet.' : 'Turn it on to see the apps with sound and choose for each.'}</p>`;
+    if ($('#pvApps').dataset.html !== html) { $('#pvApps').dataset.html = html; $('#pvApps').innerHTML = html; }
+  }
+  // what it does right now
+  const music = S.localMusic?.session && S.localMusic.app?.name;
+  const others = (pv.apps || []).filter((a) => a.route === 'phones').length;
+  let hint;
+  if (pv.available === false) hint = pv.error || 'Not available on this version of Windows.';
+  else if (!devs.some((d) => !d.isDefault) && !pv.phones) hint = 'Connect headphones that Windows lists as a sound device of their own (USB, Bluetooth, or a separate output of the sound card).';
+  else if (pv.on) hint = `On: ${music ? `${music}, ` : 'the music app, '}PowerPoint${pv.keep?.length ? ' and the kept apps' : ''} on the speakers; ${others ? `${others} other app${others === 1 ? '' : 's'}` : 'every other app'} only in ${pv.phonesName || 'the headphones'}.`;
+  else hint = `${pv.pro ? '' : `Speakers: ${def?.name || 'the audio device above'} (choose them as the audio device above; the headphones are another device). `}On: the music app and PowerPoint stay on the speakers; every other app (a browser, a media player…) plays only in the headphones, so you can listen before the room does. An app moves when it first makes a sound.`;
+  $('#pvHint').textContent = hint;
+  // headphones plugged in / a new sound device
+  const pr = pv.prompt;
+  $('#pvPrompt').classList.toggle('hidden', !pr);
+  if (pr) {
+    $('#pvPromptText').textContent = pr.kind === 'plugged'
+      ? `Headphones connected: ${pr.name}. Turn on headphone preview?`
+      : `New sound device: ${pr.name}. Use it as the headphones and turn on headphone preview?`;
+  }
+  if (pv.notice && pv.notice.at > pvNoticeSeen) { pvNoticeSeen = pv.notice.at; toast(pv.notice.text, 'info'); }
+}
+function setOptions(sel, html, value) {
+  if (sel.dataset.opts !== html) { sel.innerHTML = html; sel.dataset.opts = html; }
+  if (document.activeElement !== sel) sel.value = value || '';
+}
+$('#pvPhones').addEventListener('change', (e) => post('/api/preview', { phones: e.target.value }));
+$('#pvRoom').addEventListener('change', (e) => post('/api/preview', { room: e.target.value }));
+$('#pvKeep').addEventListener('change', (e) => post('/api/preview', { keep: e.target.value.split(/[,;]+/).map((x) => x.trim().replace(/\.exe$/i, '')).filter(Boolean) }));
+$('#pvMode').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pv-on]');
+  if (b) post('/api/preview', { on: b.dataset.pvOn === '1' });
+});
+$('#pvApps').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pv-route]');
+  const row = e.target.closest('[data-pv-app]');
+  if (b && row) post('/api/preview/app', { name: row.dataset.pvApp, route: b.dataset.pvRoute });
+});
+$('#pvPromptYes').addEventListener('click', async () => {
+  const pr = S.preview?.prompt;
+  if (!pr) return;
+  try {
+    if (pr.kind === 'new') await api('/api/preview', { phones: pr.id });
+    await api('/api/preview', { on: true });
+  } catch { /* toast shown */ }
+});
+$('#pvPromptNo').addEventListener('click', () => post('/api/preview/dismiss'));
+
 // ---------------- output ----------------
 
 function renderOutput() {
@@ -1186,6 +1273,9 @@ function paramInput(p, value, ci, si) {
   if (p.type === 'audioDevice') {
     const devs = S.audio?.devices || [];
     return `<select ${attrs}>${devs.map((d) => `<option value="${esc(d.id)}" ${d.id === value ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select>`;
+  }
+  if (p.type === 'onoff') {
+    return `<select ${attrs}><option value="on" ${value !== 'off' ? 'selected' : ''}>On</option><option value="off" ${value === 'off' ? 'selected' : ''}>Off</option></select>`;
   }
   if (p.type === 'displayMode') {
     return `<select ${attrs}>${Object.entries(MODES).map(([k, v]) => `<option value="${k}" ${k === value ? 'selected' : ''}>${v}</option>`).join('')}</select>`;

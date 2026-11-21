@@ -34,7 +34,8 @@ button, select, input { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 /* Lite / Standard / Extra: what this edition doesn't have is not shown (body classes set by app.js) */
 body.no-music .needs-music, body.no-audio .needs-audio, body.no-displayMode .needs-displayMode,
-body.no-cues .needs-cues, body.no-run .needs-run, body.no-stage .needs-stage { display: none !important; }
+body.no-cues .needs-cues, body.no-run .needs-run, body.no-stage .needs-stage,
+body.no-preview .needs-preview, body.no-previewPro .needs-previewPro { display: none !important; }
 .dim { color: var(--dim); }
 .grow { flex: 1; }
 p { margin: 0 0 8px; }
@@ -585,6 +586,24 @@ label.check.gap { margin-top: 14px; }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.info { border-left-color: var(--green); }
+/* headphone preview */
+.pv-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.pv-row select { flex: 1; min-width: 0; }
+.pv-row .label { flex: none; min-width: 64px; }
+.pv-apps { margin-top: 8px; }
+.pv-apps .row { cursor: default; }
+.pv-apps .row .seg { flex: none; }
+.pv-apps .tag-playing { font-size: 10px; color: var(--green); text-transform: uppercase; letter-spacing: .06em; margin-left: 6px; }
+.pv-apps .auto { font-size: 11px; color: var(--dim); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: 0 4px; }
+.pv-keep { display: block; margin-top: 8px; }
+.pv-keep input { width: 100%; margin-top: 4px; }
+#pvMode button.on[data-pv-on="1"] { background: var(--green); color: #000; }
+.pv-prompt {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; max-width: calc(100vw - 32px);
+  background: var(--surface); border: 1px solid var(--line-hi); border-left: 3px solid var(--blue);
+}
+.pv-prompt span { flex: 1; }
 
 .mnav { display: none; }
 
@@ -638,7 +657,7 @@ label.check.gap { margin-top: 14px; }
   body[data-tab=music] .mnav [data-tab=music],
   body[data-tab=output] .mnav [data-tab=output],
   body[data-tab=cues] .mnav [data-tab=cues] { color: var(--text); border-top-color: var(--text); }
-  .toast { bottom: 130px; }
+  .toast, .pv-prompt { bottom: 130px; }
   /* the top bar stays on screen (Settings can let it scroll away) */
   body:not(.bar-scrolls) { padding-top: 40px; }
   body:not(.bar-scrolls) .bar { position: fixed; top: 0; left: 0; right: 0; }

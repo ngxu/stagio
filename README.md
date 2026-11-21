@@ -28,6 +28,7 @@ moving to another edition keeps your settings, PIN, cues and runs of show.
 | For | people presenting their own slides | one person running slides, music and the projector | the person running the whole event |
 | Slides, black/white screen, notes, timer, true thumbnails, phone remote, pre-show check, speed-up, offline fallbacks | yes | yes | yes |
 | Music from any player with fades, volume glides, audio output, projector mode, cues, automatic cues | | yes | yes |
+| Headphone preview (Windows): other apps only in your headphones | | basic | full |
 | Run of show, opening countdown, stage display for the speaker, messages to the stage | | | yes |
 
 Each edition has its own version number (`editions.json`): Beta 1.0, 1.1, 1.2, 1.2.1, 2.0 …
@@ -52,6 +53,12 @@ A fix raises the last number, a new feature the middle one.
 - **Output** (Standard, Extra): Windows audio output device, system volume with glides, projector
   mode (PC only / duplicate / extend / projector only), which screen the show uses, hiding
   PowerPoint's presenter view.
+- **Headphone preview** (Windows; basic in Standard, full in Extra): while it is on, the music app
+  and PowerPoint stay on the speakers and every other app plays only in your headphones, so you can
+  listen to the next song or video before the room hears it. Plugging the headphones in offers to
+  turn it on; unplugging turns it off. Extra also picks the speakers device, keeps chosen apps on
+  the speakers, sets each app by hand and has a cue step for it. The headphones must be a sound
+  device of their own in Windows (USB, Bluetooth, or a separate output of the sound card).
 - **Cues** (Standard, Extra): one button for a sequence, for example "fade the music, then start the
   show at slide 1". Keys 1-9, or automatically when a given slide comes up.
 - **Run of show** (Extra): the event as a list of parts (countdown, speaker, break, music). Next part

@@ -347,6 +347,125 @@ namespace Stagio {
     public bool IsDefault;
   }
 
+  // ---- headphone preview: each app's own output device ----
+  // Windows keeps an output device per app ("App volume and device preferences" in Settings). This
+  // is the interface that page uses (undocumented, stable since Windows 10 1803; its ID changed with
+  // Windows 11 / 21H2, so both are tried). Windows stores the choice per program and keeps it after
+  // a restart, so Stagio clears every choice it made (see Preview-Apply in this file).
+  [Guid("ab3d4648-e242-459f-b02f-541c70306324"), InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+  interface IAudioPolicyConfigFactoryNew {
+    int _1(); int _2(); int _3(); int _4(); int _5(); int _6(); int _7(); int _8(); int _9(); int _10();
+    int _11(); int _12(); int _13(); int _14(); int _15(); int _16(); int _17(); int _18(); int _19();
+    [PreserveSig] int SetPersistedDefaultAudioEndpoint(uint processId, int flow, int role, IntPtr deviceId);
+    [PreserveSig] int GetPersistedDefaultAudioEndpoint(uint processId, int flow, int role, [Out, MarshalAs(UnmanagedType.HString)] out string deviceId);
+    [PreserveSig] int ClearAllPersistedApplicationDefaultEndpoints();
+  }
+  [Guid("2a59116d-6c4f-45e0-a74f-707e3fef9258"), InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+  interface IAudioPolicyConfigFactoryOld {
+    int _1(); int _2(); int _3(); int _4(); int _5(); int _6(); int _7(); int _8(); int _9(); int _10();
+    int _11(); int _12(); int _13(); int _14(); int _15(); int _16(); int _17(); int _18(); int _19();
+    [PreserveSig] int SetPersistedDefaultAudioEndpoint(uint processId, int flow, int role, IntPtr deviceId);
+    [PreserveSig] int GetPersistedDefaultAudioEndpoint(uint processId, int flow, int role, [Out, MarshalAs(UnmanagedType.HString)] out string deviceId);
+    [PreserveSig] int ClearAllPersistedApplicationDefaultEndpoints();
+  }
+
+  public class AppSound {
+    public int pid { get; set; }
+    public string name { get; set; }   // process name
+    public bool active { get; set; }   // playing sound right now
+  }
+
+  public static class AudioRoute {
+    [DllImport("combase.dll", PreserveSig = false)]
+    static extern void RoGetActivationFactory([MarshalAs(UnmanagedType.HString)] string id, [In] ref Guid iid, [Out, MarshalAs(UnmanagedType.IInspectable)] out object factory);
+    [DllImport("combase.dll", PreserveSig = false)]
+    static extern void WindowsCreateString([MarshalAs(UnmanagedType.LPWStr)] string s, int length, out IntPtr hstring);
+    [DllImport("combase.dll", PreserveSig = false)]
+    static extern void WindowsDeleteString(IntPtr hstring);
+
+    const string ClassId = "Windows.Media.Internal.AudioPolicyConfig";
+    static object factory;
+    static bool isNew;
+    public static string LastError;
+
+    static object Factory() {
+      if (factory != null) return factory;
+      object o;
+      Guid g = typeof(IAudioPolicyConfigFactoryNew).GUID;
+      try { RoGetActivationFactory(ClassId, ref g, out o); isNew = true; factory = o; return o; } catch { }
+      g = typeof(IAudioPolicyConfigFactoryOld).GUID;
+      RoGetActivationFactory(ClassId, ref g, out o); isNew = false; factory = o;
+      return o;
+    }
+
+    public static bool Available() {
+      try { return Factory() != null; } catch (Exception e) { LastError = e.Message; return false; }
+    }
+
+    // The ID this interface uses for an output device, from the MMDevice ID ("{0.0.0.00000000}.{guid}").
+    static string Full(string mmId) { return @"\\?\SWD#MMDEVAPI#" + mmId + "#{e6327cad-dcec-4949-ae8a-991e976a79d2}"; }
+
+    /// Sends one process's sound (all roles) to that device, or back to the default (null or "").
+    public static int Route(int pid, string mmId) {
+      object f = Factory();
+      IntPtr h = IntPtr.Zero;
+      if (!string.IsNullOrEmpty(mmId)) { string full = Full(mmId); WindowsCreateString(full, full.Length, out h); }
+      try {
+        int hr = 0;
+        for (int role = 0; role <= 2; role++) {
+          int r = isNew
+            ? ((IAudioPolicyConfigFactoryNew)f).SetPersistedDefaultAudioEndpoint((uint)pid, 0, role, h)
+            : ((IAudioPolicyConfigFactoryOld)f).SetPersistedDefaultAudioEndpoint((uint)pid, 0, role, h);
+          if (r != 0) hr = r;
+        }
+        return hr;
+      } finally { if (h != IntPtr.Zero) WindowsDeleteString(h); }
+    }
+
+    /// The device the process is sent to, as an MMDevice ID; "" = the default.
+    public static string RouteOf(int pid) {
+      object f = Factory();
+      string dev = null;
+      int hr = isNew
+        ? ((IAudioPolicyConfigFactoryNew)f).GetPersistedDefaultAudioEndpoint((uint)pid, 0, 1, out dev)
+        : ((IAudioPolicyConfigFactoryOld)f).GetPersistedDefaultAudioEndpoint((uint)pid, 0, 1, out dev);
+      if (hr != 0 || string.IsNullOrEmpty(dev)) return "";
+      int a = dev.IndexOf("MMDEVAPI#", StringComparison.OrdinalIgnoreCase);
+      int b = dev.LastIndexOf('#');
+      return (a >= 0 && b > a + 9) ? dev.Substring(a + 9, b - a - 9) : dev;
+    }
+
+    /// Every process that has an audio session on an output device (one entry per process).
+    public static List<AppSound> Sessions() {
+      Dictionary<uint, AppSound> byPid = new Dictionary<uint, AppSound>();
+      IMMDeviceCollection col;
+      if (((IMMDeviceEnumerator)(new MMDeviceEnumeratorCom())).EnumAudioEndpoints(0, 1, out col) != 0) return new List<AppSound>();
+      int count; col.GetCount(out count);
+      for (int i = 0; i < count; i++) {
+        IMMDevice dev; if (col.Item(i, out dev) != 0) continue;
+        Guid iid = typeof(IAudioSessionManager2).GUID;
+        object o;
+        if (dev.Activate(ref iid, 23, IntPtr.Zero, out o) != 0) continue;
+        IAudioSessionEnumerator en;
+        if (((IAudioSessionManager2)o).GetSessionEnumerator(out en) != 0) continue;
+        int n; en.GetCount(out n);
+        for (int j = 0; j < n; j++) {
+          IAudioSessionControl2 ctl; if (en.GetSession(j, out ctl) != 0) continue;
+          uint pid; if (ctl.GetProcessId(out pid) != 0 || pid == 0) continue;
+          int state; ctl.GetState(out state);
+          AppSound s;
+          if (!byPid.TryGetValue(pid, out s)) {
+            s = new AppSound(); s.pid = (int)pid;
+            try { using (System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById((int)pid)) s.name = p.ProcessName; } catch { continue; }
+            byPid[pid] = s;
+          }
+          if (state == 1) s.active = true;
+        }
+      }
+      return new List<AppSound>(byPid.Values);
+    }
+  }
+
   public static class Audio {
     [DllImport("ole32.dll")] static extern int PropVariantClear(ref PROPVARIANT pvar);
 
@@ -1441,6 +1560,95 @@ function PPT-Save($a) {
   return $true
 }
 
+# ---------------- Headphone preview (Standard, Extra) ----------------
+# While it is on, the music app Stagio follows, PowerPoint (slide videos) and any app kept on the
+# speakers play on the speakers ("room"); every other app plays only in the headphones, so the
+# operator can listen to the next song or video before the room hears it. Windows remembers an
+# app's output per program, also after a restart, so every program Stagio sent somewhere is
+# listed in "touched" (kept in Stagio's settings) and set back to the default as soon as it is
+# seen while the preview is off.
+
+# Windows only takes an output for a process that has sound (an audio session): an app that has not
+# played anything yet moves when it first does, within the poll (about half a second). After that,
+# Windows remembers the choice for that program.
+# Never re-routed: Stagio itself and parts of Windows.
+$script:previewSkip = @('Stagio', 'electron', 'audiodg', 'svchost', 'explorer', 'ShellExperienceHost', 'SystemSettings', 'powershell', 'conhost')
+$script:appLabels = @{}
+
+function Get-AppLabel($p) {
+  if ($script:appLabels.ContainsKey($p.ProcessName)) { return $script:appLabels[$p.ProcessName] }
+  $label = $p.ProcessName
+  try { $d = $p.MainModule.FileVersionInfo.FileDescription; if ($d) { $label = $d.Trim() } } catch { }
+  $script:appLabels[$p.ProcessName] = $label
+  return $label
+}
+
+function Preview-Apply($a) {
+  if (-not [Stagio.AudioRoute]::Available()) {
+    return @{ available = $false; error = 'This version of Windows does not let Stagio choose an output per app'; apps = @(); touched = @($a.touched) }
+  }
+  $on = [bool]$a.on
+  $phones = [string]$a.phones
+  $room = [string]$a.room
+  $stay = @($a.stay | ForEach-Object { ([string]$_).ToLowerInvariant() })
+  $over = @{}
+  if ($a.overrides) { foreach ($k in $a.overrides.PSObject.Properties) { $over[$k.Name.ToLowerInvariant()] = [string]$k.Value } }
+  $touched = New-Object System.Collections.Generic.HashSet[string] ([StringComparer]::OrdinalIgnoreCase)
+  foreach ($t in @($a.touched)) { if ($t) { [void]$touched.Add([string]$t) } }
+  $mine = (Get-Process -Id $PID).SessionId
+
+  # Who to look at: apps with sound (+ open players and browsers while on); while off, only the
+  # programs Stagio sent somewhere before.
+  $procs = @{}
+  $active = @{}
+  foreach ($s in [Stagio.AudioRoute]::Sessions()) {
+    $active[$s.pid] = $s.active
+    try { $procs[$s.pid] = Get-Process -Id $s.pid -ErrorAction Stop } catch { }
+  }
+  if ($touched.Count -gt 0) {
+    foreach ($p in (Get-Process -Name @($touched) -ErrorAction SilentlyContinue)) { $procs[$p.Id] = $p }
+  }
+
+  # checks only: limit to these programs (and include them even without sound)
+  if ($a.only) {
+    $only = @($a.only)
+    foreach ($p in (Get-Process -Name $only -ErrorAction SilentlyContinue)) { $procs[$p.Id] = $p }
+    foreach ($k in @($procs.Keys)) { if ($only -notcontains $procs[$k].ProcessName) { $procs.Remove($k) } }
+  }
+  $apps = @{}
+  $changed = 0
+  foreach ($p in $procs.Values) {
+    if ($p.SessionId -ne $mine -or (-not $a.only -and $script:previewSkip -contains $p.ProcessName)) { continue }
+    $name = $p.ProcessName
+    $key = $name.ToLowerInvariant()
+    if (-not $on -and -not $touched.Contains($name)) { continue }
+    $route = 'default'
+    if ($on) {
+      $route = if ($over.ContainsKey($key)) { $over[$key] } elseif ($stay -contains $key) { 'room' } else { 'phones' }
+    }
+    $target = if ($route -eq 'phones') { $phones } elseif ($route -eq 'room') { $room } else { '' }
+    $cur = [Stagio.AudioRoute]::RouteOf($p.Id)
+    if ($cur -ne $target) {
+      if ([Stagio.AudioRoute]::Route($p.Id, $target) -eq 0) { $changed++ }
+      $cur = [Stagio.AudioRoute]::RouteOf($p.Id)
+    }
+    if ($cur) { [void]$touched.Add($name) }
+    # One line per program: playing if any of its processes plays.
+    $e = $apps[$key]
+    if (-not $e) { $e = @{ name = $name; label = (Get-AppLabel $p); route = $route; active = $false; routed = $false }; $apps[$key] = $e }
+    if ($active[$p.Id]) { $e.active = $true }
+    if ($cur) { $e.routed = $true }
+  }
+  # Programs set back to the default everywhere they run are no longer Stagio's business.
+  foreach ($e in $apps.Values) { if (-not $e.routed -and ($e.route -eq 'default' -or ($e.route -eq 'room' -and -not $room))) { [void]$touched.Remove($e.name) } }
+  return @{
+    available = $true
+    changed   = $changed
+    apps      = @($apps.Values | Sort-Object { -not $_.active }, { $_.label })
+    touched   = @($touched)
+  }
+}
+
 # ---------------- Music: whichever app plays it (no account or sign-in needed) ----------------
 # Any player that appears in Windows' own media controls (the box above the volume flyout):
 # Spotify, Apple Music, Media Player, a browser tab, VLC 4, foobar2000 with its plugin, ...
@@ -2311,6 +2519,7 @@ function Invoke-Command2($cmd, $a) {
     'show.captureSlide' { return [Stagio.ShowCapture]::CaptureSlide([string]$a.out, [double]$a.ratio, [string]$a.ref, [long]$a.hwnd) }
     'show.compareWindow' { return [Stagio.ShowCapture]::CompareWindow([long]$a.hwnd, [double]$a.ratio, [string]$a.ref) }   # tests
     'sys.activity'  { $x = [Stagio.ShowCapture]::Activity() -split '\|'; return @{ app = $x[0]; idleMs = [long]$x[1] } }
+    'preview.apply' { return Preview-Apply $a }
     'music.state'   { return Music-State $a }
     'music.do'      { return Music-Do $a }
     'music.launch'  { return Music-Launch $a }

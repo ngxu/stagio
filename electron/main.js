@@ -266,5 +266,16 @@ ${st.live ? 'A slide show is running: it keeps running in PowerPoint, but phones
   });
 
   app.on('window-all-closed', () => app.quit());
-  app.on('before-quit', () => { try { server?.stop(); } catch { /* already stopped */ } });
+  // Apps the headphone preview sent to the headphones go back to the default output first
+  // (at most 2.5 s; whatever is left is set back at the next start).
+  let tidied = false;
+  app.on('before-quit', (e) => {
+    if (!tidied && server?.beforeQuit) {
+      e.preventDefault();
+      tidied = true;
+      Promise.race([server.beforeQuit().catch(() => {}), new Promise((r) => setTimeout(r, 2500))]).finally(() => app.quit());
+      return;
+    }
+    try { server?.stop(); } catch { /* already stopped */ }
+  });
 }
