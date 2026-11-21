@@ -23,9 +23,9 @@ phones on the same network can be remotes. What protects it:
 - **Stage display** (Extra): its own PIN and key, which reach only a short list of read-only paths
   (`STAGE_PATHS` in `server.js`); changing slides from there is off unless the desk allows it.
 - **Bluetooth remote**: paired with the same PIN.
-- **Stored data**: settings, PIN, keys and the Spotify sign-in (PKCE, no client secret) are kept in
-  the user's own profile (`%APPDATA%\OneDesk\config.json`) and never leave the computer except to
-  Spotify, when the user connects it.
+- **Stored data**: settings, PIN and keys are kept in the user's own profile
+  (`%APPDATA%\OneDesk\config.json`) and never leave the computer. Stagio signs in to no online
+  service.
 
 ## Known limits
 

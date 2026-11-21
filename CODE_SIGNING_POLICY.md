@@ -1,9 +1,7 @@
 # Code signing policy
 
-Free code signing for the Windows version is provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
-
-> Status: applied for. Until the project is accepted, the Windows installers are not signed.
+> Status: the Windows installers are **not code-signed** at the moment. If signing is added, it will
+> work as described here (the Windows build workflow already has the steps for SignPath.io).
 
 ## What is signed
 
@@ -28,7 +26,7 @@ The Mac version is not signed (it would need a paid Apple Developer account).
 
 Changes from people outside the team are reviewed by a team member before they are merged.
 Every release is approved by hand before it is signed. Accounts that can commit or approve use multi-factor
-authentication on GitHub and SignPath.
+authentication on GitHub and on the signing service.
 
 ## Privacy
 
@@ -39,9 +37,8 @@ In detail:
 
 - Stagio runs on the presentation computer. Phones and tablets connect to it directly over the
   local network (or Bluetooth); nothing goes through a server of this project.
-- **Spotify**: only if the user connects a Spotify Premium account in Settings, Stagio talks to
-  Spotify's Web API (`accounts.spotify.com`, `api.spotify.com`) to control playback. The tokens
-  stay on the computer.
+- **Music**: Stagio controls the music app on the computer through the operating system (Windows'
+  media controls, AppleScript on the Mac). It does not sign in to or talk to any music service.
 - **Bluetooth remote page**: only if the user starts the Bluetooth remote, the phone opens a page
   hosted on GitHub Pages (`ngxu.github.io/stagio/remote/`); GitHub serves that page as it serves any
   website. The remote itself then talks to the computer over Bluetooth.
@@ -50,4 +47,4 @@ In detail:
 ## Reporting a problem
 
 If a signed file looks wrong, or you think a signature is being misused, open an issue in this
-repository or contact SignPath Foundation.
+repository.

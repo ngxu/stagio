@@ -29,7 +29,7 @@
       </video>
       <div class="hero-text">
         <p class="lead">At most events, one person changes the slides, another plays the music, and someone else deals with the projector and the sound. Stagio puts all of that on one console, so one person can run it, from the computer or from a phone.</p>
-        <p>It works with the PowerPoint you already use and the Spotify app on the same computer. Nothing changes in your presentations.</p>
+        <p>It works with the PowerPoint you already use and whatever plays your music on the same computer. No accounts, nothing in the cloud.</p>
         <p><a class="btn primary" href="../">Download for Windows and Mac</a></p>
       </div>
     </section>
@@ -75,8 +75,8 @@
         <div>
           <h3>Windows</h3>
           <ol>
-            <li>Download your edition from the <a href="../">download page</a> and open it. Windows 10 or 11, with PowerPoint 2016 or Microsoft 365. Music needs the Spotify app.</li>
-            <li>If Windows says “Windows protected your PC”: More info → Run anyway. The installer is not code-signed yet (free signing for open-source projects has been applied for).</li>
+            <li>Download your edition from the <a href="../">download page</a> and open it. Windows 10 or 11, with PowerPoint 2016 or Microsoft 365. For music, any player you already use.</li>
+            <li>If Windows says “Windows protected your PC”: More info → Run anyway. The installer is not code-signed.</li>
             <li>If nothing happens, antivirus software is still checking the new file. Try again in a few minutes.</li>
             <li>Stagio used to be called OneDesk. With OneDesk installed, install the same edition of Stagio (OneDesk Extra → Stagio Extra): it updates it and keeps the settings, PIN and cues. OneDesk 0.x: install Standard. Windows Firewall asks once more; allow private networks.</li>
           </ol>
@@ -86,7 +86,7 @@
           <ol>
             <li>Download the Apple silicon or Intel version and drag it to Applications.</li>
             <li>The first time, Control-click the app → Open (it is not signed by Apple).</li>
-            <li>Allow it to control PowerPoint and Spotify when macOS asks. The live projector picture needs macOS 14 and the Screen Recording permission.</li>
+            <li>Allow it to control PowerPoint and your music app (Music or Spotify) when macOS asks. The live projector picture needs macOS 14 and the Screen Recording permission.</li>
             <li>Not yet tested with PowerPoint on a real Mac: try it before an event.</li>
           </ol>
         </div>
@@ -119,7 +119,7 @@
         <li><b>Preview</b>: the next slide.</li>
         <li><b>Notes</b> for the slide on the projector; A− / A+ change the size on this device.</li>
         <li><b>Prev, Black, White, Next</b>. Black and white blank the projector; press again to come back.</li>
-        <li><b>All slides</b>: click one to jump there. The pictures are the real slides and follow edits made in PowerPoint, even during the show.</li>
+        <li><b>All slides</b>: click one to jump there. The pictures are the real slides and follow edits made in PowerPoint, even during the show. Hidden slides are dimmed and marked <i>Hidden</i>; the show skips them. On the computer, drag a slide to another place to move it in the file, then <b>Save file</b>.</li>
         <li><b>Music</b>: play, skip, level and fades. <a href="#music">More</a></li>
         <li><b>Output</b>: sound device, system level, projector mode. <a href="#output">More</a></li>
         <li><b>Cues</b>: one button for a sequence of steps. <a href="#cues">More</a></li>
@@ -152,10 +152,11 @@
 
     <section id="music">
       <h2>Music and fades <span class="tag">Standard · Extra</span></h2>
-      <p>Two ways to control Spotify:</p>
+      <p>Stagio controls whatever plays your music on this computer: a music app, a media player or a browser. On Windows that is any app in the system's media controls (the box that appears with the volume keys); on the Mac, the Music app or Spotify. No account or sign-in is needed.</p>
       <ul>
-        <li><b>Local</b>: the Spotify app on this computer, a free account works. Play, pause, skip, level and fades. Choose playlists in the Spotify app.</li>
-        <li><b>Premium</b>: Spotify's own connection (needs Premium): playlists, search, the queue and other devices, from the console and the phone.</li>
+        <li><b>Automatic</b> follows the app that plays, and stays with it while it plays, so a video in a browser doesn't take over. The menu at the top of Music can pick one app instead.</li>
+        <li>Play, pause, skip, click the progress bar to jump (when the app allows it), level and fades. Choose songs and playlists in the app itself.</li>
+        <li>The first time, start the music once in the app (pausing afterwards is fine). Stagio remembers the app and offers to open it next time.</li>
       </ul>
       <p><b>Fade out</b> lowers the music smoothly and pauses it, then puts the level back for next time. <b>Fade in</b> starts it and brings it up. The seconds box sets how long. <b>Fade from … to …</b> goes between two levels you choose, for example from 60 down to 20 under a speaker. Fades are smooth, without crackle, and a new fade takes over from one in progress.</p>
     </section>
@@ -172,7 +173,7 @@
 
     <section id="cues">
       <h2>Cues <span class="tag">Standard · Extra</span></h2>
-      <p>A cue runs several steps from one button, for example <i>Opening: music out, start the show at slide 1</i>, or <i>Break: black screen, music in</i>. Edit them under <b>Cues → Edit</b>: music steps (fades, levels, a Premium playlist), slide steps (start, go to, next, black, white, end), output steps (sound device, system level, display mode) and waits. Fades run in the background, so the next step happens right away.</p>
+      <p>A cue runs several steps from one button, for example <i>Opening: music out, start the show at slide 1</i>, or <i>Break: black screen, music in</i>. Edit them under <b>Cues → Edit</b>: music steps (play, pause, fades, levels), slide steps (start, go to, next, black, white, end), output steps (sound device, system level, display mode) and waits. Fades run in the background, so the next step happens right away.</p>
       <figure><img src="img/cue-editor.png" alt="The cue editor" loading="lazy"></figure>
       <ul>
         <li>Keys <b>1–9</b> run the first nine cues. To avoid accidents, set them to need <b>Shift + 1–9</b> under Keys.</li>
@@ -269,8 +270,8 @@
         <dd>Output → PowerPoint presenter view → Hide. It applies the next time a show starts.</dd>
         <dt>A file opened from an e-mail or download is read-only</dt>
         <dd>It is in PowerPoint's Protected View. Click the amber <b>Protected View · enable editing</b> tag.</dd>
-        <dt>The music doesn't respond (Local)</dt>
-        <dd>Open the Spotify app and play any track once; after that Stagio can control it, also when paused.</dd>
+        <dt>The music doesn't respond</dt>
+        <dd>Start the music once in your player; after that Stagio can control it, also when paused. If several apps play, pick the right one in the menu at the top of Music.</dd>
         <dt>Switching editions</dt>
         <dd>Open the other edition. The one that is running asks whether to switch; the settings, PIN, cues and runs of show come along. Uninstalling one edition keeps the shared settings for the others.</dd>
         <dt>Where are my settings?</dt>
@@ -280,7 +281,7 @@
   </main>
 
   <footer>
-    <span class="dim">Stagio · Lite and Standard Beta 1.1 · Extra Beta 1.2</span>
+    <span class="dim">Stagio · Lite and Standard Beta 1.2 · Extra Beta 1.3</span>
     <span><a href="../">Download</a> · <a href="https://github.com/ngxu/stagio/releases">All versions</a> · <a href="https://github.com/ngxu/stagio">Source code</a> · <a href="https://github.com/ngxu/stagio/blob/main/CODE_SIGNING_POLICY.md">Code signing policy</a></span>
   </footer>
 </body>

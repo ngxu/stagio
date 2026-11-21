@@ -120,7 +120,7 @@
 
       <div class="strip-h">
         <span class="label" id="stripTitle">Slides</span>
-        <span class="label dim"><span class="wide-only">Live edits refresh automatically · </span><button class="link" id="btnRefreshThumbs">Reload all</button></span>
+        <span class="label dim"><button class="btn sm hidden" id="btnSaveDeck" title="Save the file in PowerPoint (the new slide order is not saved yet)">Save file</button> <span class="wide-only reorder-hint">Drag a slide to move it · </span><span class="wide-only">Live edits refresh automatically · </span><button class="link" id="btnRefreshThumbs">Reload all</button></span>
       </div>
       <div class="strip" id="strip"></div>
       <div class="empty" id="pptEmpty">
@@ -136,18 +136,19 @@
       <div class="sec-h">
         <h2>Music</h2>
         <div class="grow"></div>
+        <select class="sm" id="musicSource" title="Which app Stagio controls. Automatic follows the app that plays music, and stays with it while it plays.">
+          <option value="">Automatic</option>
+        </select>
         <div class="seg sm" id="musicMode">
-          <button data-music="local" title="Control the Spotify app on this PC. Works with a free account.">Local</button>
-          <button data-music="spotify" title="Spotify Web API: playlists, search, devices. Needs Premium.">Premium</button>
-          <button data-music="off">Off</button>
+          <button data-music="local" title="Control the music app on this PC">On</button>
+          <button data-music="off" title="No music control; music steps in cues are skipped">Off</button>
         </div>
       </div>
 
-      <div id="spotifyOff" class="note hidden">Music control is off. Music steps in cues are skipped.</div>
+      <div id="musicOff" class="note hidden">Music control is off. Music steps in cues are skipped.</div>
       <div id="localHint" class="note hidden"></div>
-      <div id="spotifySetup" class="setup hidden"></div>
 
-      <div id="spotifyMain">
+      <div id="musicMain">
         <div class="np">
           <div class="art" id="art"></div>
           <div class="meta">
@@ -160,11 +161,9 @@
         <div class="times mono"><span id="tPos">0:00</span><span id="fadingLabel" class="fading"></span><span id="tDur">0:00</span></div>
 
         <div class="mctl">
-          <button class="btn icon premium-only" id="btnShuffle" title="Shuffle"></button>
           <button class="btn icon" id="btnPrevTrack" title="Previous track"></button>
           <button class="btn icon play" id="btnPlay" title="Play / pause (P)"></button>
           <button class="btn icon" id="btnNextTrack" title="Next track (N)"></button>
-          <button class="btn icon premium-only" id="btnRepeat" title="Repeat"></button>
         </div>
 
         <label class="fader">
@@ -187,22 +186,8 @@
           <button class="btn" id="btnFadeTo" title="Uses the seconds above">Fade</button>
         </div>
 
-        <p class="hint local-only">Local mode: transport, level and fades. Pick playlists in the Spotify app. Fades change Spotify only, not the system volume.</p>
+        <p class="hint">Plays, pauses and fades the app that plays music on this PC: a music app, a media player or a browser. Pick songs and playlists in that app. Fades change only that app, not the system volume.</p>
 
-        <div class="premium-only">
-          <div class="tabs" role="tablist">
-            <button class="tab active" data-mtab="playlists">Playlists</button>
-            <button class="tab" data-mtab="search">Search</button>
-            <button class="tab" data-mtab="devices">Devices</button>
-          </div>
-          <div class="mtab" data-mtab="playlists"><div class="list" id="playlistList"><p class="dim">Loading…</p></div></div>
-          <div class="mtab hidden" data-mtab="search">
-            <input type="search" id="searchBox" placeholder="Search tracks or playlists, then Enter">
-            <div class="list" id="searchList"></div>
-          </div>
-          <div class="mtab hidden" data-mtab="devices"><div class="list" id="deviceList"></div></div>
-          <p><button class="link" id="btnSpotifyLogout">Disconnect Spotify account</button></p>
-        </div>
       </div>
     </section>
 

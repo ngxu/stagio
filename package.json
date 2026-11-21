@@ -1,7 +1,7 @@
 {
   "name": "stagio",
-  "version": "1.1.0-beta",
-  "description": "One-person control desk for PowerPoint, Spotify and audio/projector output",
+  "version": "1.2.0-beta",
+  "description": "One-person control desk for PowerPoint, music and audio/projector output",
   "author": "Stagio",
   "license": "GPL-3.0-or-later",
   "homepage": "https://ngxu.github.io/stagio/",
@@ -83,7 +83,7 @@
       "identity": "-",
       "artifactName": "Stagio-${version}-mac-${arch}.${ext}",
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "Stagio controls PowerPoint and Spotify for you during a presentation.",
+        "NSAppleEventsUsageDescription": "Stagio controls PowerPoint and your music app (Music or Spotify) for you during a presentation.",
         "NSBluetoothAlwaysUsageDescription": "Stagio uses Bluetooth so an Android phone can be the remote when there is no Wi-Fi."
       },
       "extraResources": [

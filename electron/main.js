@@ -154,11 +154,11 @@ if (!app.requestSingleInstanceLock({ edition: edition.id, name: edition.name, ex
     consoleOrigin = new URL(url).origin;
     win.loadURL(url);
     // A file dropped outside the console's own drop handling would otherwise replace the console
-    // with that file; the window only ever shows web pages (the console, the Spotify sign-in).
+    // with that file; the window only ever shows web pages (the console).
     win.webContents.on('will-navigate', (e, target) => {
       if (!/^https?:\/\//i.test(target)) e.preventDefault();
     });
-    // Links such as the Spotify developer dashboard open in the normal browser (web links only).
+    // Web links (the guide, the source code) open in the normal browser (web links only).
     win.webContents.setWindowOpenHandler(({ url: target }) => {
       if (/^https?:\/\//i.test(target)) shell.openExternal(target);
       return { action: 'deny' };

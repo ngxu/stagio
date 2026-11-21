@@ -214,7 +214,7 @@ Section "${APP_NAME}" SecMain
   WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${APP_EXE},0"
   WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "Stagio"
-  WriteRegStr HKCU "${UNINST_KEY}" "Comments" "One-person control desk for PowerPoint, Spotify and audio/projector output"
+  WriteRegStr HKCU "${UNINST_KEY}" "Comments" "One-person control desk for PowerPoint, music and audio/projector output"
   WriteRegStr HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNINST_KEY}" "UninstallString" '"$INSTDIR\${UNINST_EXE}"'
   WriteRegStr HKCU "${UNINST_KEY}" "QuietUninstallString" '"$INSTDIR\${UNINST_EXE}" /S'

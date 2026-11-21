@@ -68,6 +68,22 @@ function configChecks() {
   check('damaged config is restored from the backup', b.pin === a.pin && b.cues[0].name === 'Renamed cue', `pin kept: ${b.pin === a.pin}`);
   check('...and the damaged file is kept for inspection', fs.readdirSync(dir).some((f) => f.startsWith('config.damaged-')));
   check('no temporary files are left behind', !fs.readdirSync(dir).some((f) => f.endsWith('.tmp')));
+
+  // Settings from before 1.2 / 1.3: Spotify Premium mode, its sign-in, "spotify.*" cue steps.
+  const old = config.load();
+  old.features = { music: 'spotify' };
+  old.spotify = { clientId: 'abc', tokens: { access: 'x', refresh: 'y' } };
+  old.cues = [{ id: 'z', name: 'Old cue', steps: [{ type: 'spotify.fadeOut', seconds: 4 }, { type: 'spotify.playUri', uri: 'spotify:playlist:1' }, { type: 'ppt.start', slide: 1 }] }];
+  delete old.music;
+  config.save(old);
+  const m = config.load();
+  check('an old Premium setting becomes music on, and the stored Spotify sign-in is dropped', m.features.music === 'local' && m.spotify === undefined && !JSON.stringify(m).includes('refresh'));
+  check('old "spotify.*" cue steps become music steps; the Premium-only playlist step is removed',
+    m.cues[0].steps.map((x) => x.type).join(' ') === 'music.fadeOut ppt.start', m.cues[0].steps.map((x) => x.type).join(' '));
+  check('music follows whatever plays until an app is chosen', m.music && m.music.source === '' && m.music.lastApp === null);
+  m.features.music = 'off';
+  config.save(m);
+  check('music switched off stays off', config.load().features.music === 'off');
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
@@ -465,9 +481,22 @@ async function serverChecks() {
     console.log('      (no LAN address: LAN checks skipped)');
   }
 
-  // Reflected text must be escaped.
-  const cb = await get('/spotify/callback?error=%3Cscript%3Ealert(1)%3C/script%3E').then((r) => r.text());
-  check('error text in the Spotify callback page is escaped', !cb.includes('<script>alert(1)</script>'));
+  // No Spotify Web API (Premium) any more: its sign-in pages are gone.
+  const gone = [await get('/spotify/login', { redirect: 'manual' }).then((r) => r.status), await get('/api/spotify/playlists').then((r) => r.status)];
+  check('the Spotify Premium sign-in and its API are gone', gone.every((x) => x === 404), gone.join(' '));
+  // Reordering checks what it is given.
+  const badMove = await post('/api/ppt/move', {}, JSON.stringify({ path: '', id: 'x', to: 0 }));
+  check('moving a slide needs a file, a slide and a place', badMove.status >= 400, `status ${badMove.status}`);
+  if (ed.features.music) {
+    const pick = await post('/api/music/source', {}, JSON.stringify({ id: 'Checks.exe' }));
+    const st1 = await get('/api/state').then((r) => r.json());
+    const back = await post('/api/music/source', {}, JSON.stringify({ id: '' }));
+    const st2 = await get('/api/state').then((r) => r.json());
+    check('the music app can be chosen, and set back to automatic',
+      pick.status === 200 && back.status === 200 && st1.localMusic?.pinned === 'Checks.exe' && st2.localMusic?.pinned === '',
+      `${st1.localMusic?.pinned} -> "${st2.localMusic?.pinned}"`);
+    check('the state shows no program path of the music app', !JSON.stringify(st2.localMusic || {}).includes('\\\\') && !/"path"/.test(JSON.stringify(st2.localMusic || {})));
+  }
 
   // Live stream: a full snapshot first, then only the parts that changed; rebuilt state must match.
   const ctrl = new AbortController();

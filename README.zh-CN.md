@@ -30,9 +30,9 @@
 | **Mac** | 遥控端 | 用 Safari 打开 Remote 显示的网址，再选“文件 → 添加到程序坞” |
 | **Mac**（直接控制 Mac 版 PowerPoint） | 主控端，**测试版** | 从下载页面选一个版本下载（Apple 芯片 / Intel），见下方“Mac 测试版” |
 
-需要：Windows 10/11、PowerPoint（Office 2016 / 365），要放音乐的话还需要 Spotify 应用。
+需要：Windows 10/11、PowerPoint（Office 2016 / 365）。放音乐用你平常用的播放程序就可以（音乐 App、媒体播放器或浏览器）。
 
-**安装时的蓝色警告**：安装程序目前还没有代码签名，所以第一次执行时 Windows 会显示“Windows 已保护你的电脑”，点“更多信息 → 仍要运行”即可。Stagio 是开源项目，正在申请 SignPath Foundation 免费提供给开源项目的代码签名（见 [Code signing policy](CODE_SIGNING_POLICY.md)）；通过后，GitHub 自动打包的安装程序会带签名，发行者显示为 SignPath Foundation。签名之后，Windows SmartScreen 还要累积一些下载量才会完全不提示。
+**安装时的蓝色警告**：安装程序没有代码签名，所以第一次执行时 Windows 会显示“Windows 已保护你的电脑”，点“更多信息 → 仍要运行”即可。安装程序是在 GitHub 上从公开的源代码自动打包的，下载页的发布说明列出了每个文件的 SHA-256，可以用来核对下载的文件。
 
 **双击后没反应，或显示“Windows 无法访问指定设备、路径或文件”**：这是防毒软件还在检查这个新文件，它会先挡住还没检查完的、没签名的程序。等几分钟再双击就可以，不需要关掉防毒，也不需要加例外。刚装好之后马上卸载，也可能遇到同样的情况。
 
@@ -66,7 +66,7 @@ NSIS 用的是 electron-builder 缓存里的那一份（`%LOCALAPPDATA%\electron
 
 ### Mac 测试版
 
-Mac 版用 AppleScript 控制 Mac 版 PowerPoint 和 Spotify，其余部分（屏幕、音频输出、截取放映画面、蓝牙）由 Stagio 自带的 Mac 小程序完成（`mac/helper/main.swift`，用 Apple 自己的 ScreenCaptureKit、CoreGraphics、CoreAudio、CoreBluetooth）。它在 GitHub 的 Mac 上自动打包，并在那里检查过：小程序的每个指令都有回应、不会崩溃，能真正截取一个窗口（用“文本编辑”代替放映窗口）并存成投影片图片，主控台能启动，“Mac check”能跑完。**但还没有和真正的 PowerPoint、投影机一起测试过**（GitHub 的 Mac 上没有 PowerPoint），正式使用前请先按下面的“Mac 测试清单”试一次。
+Mac 版用 AppleScript 控制 Mac 版 PowerPoint，以及“音乐”App 或 Spotify，其余部分（屏幕、音频输出、截取放映画面、蓝牙）由 Stagio 自带的 Mac 小程序完成（`mac/helper/main.swift`，用 Apple 自己的 ScreenCaptureKit、CoreGraphics、CoreAudio、CoreBluetooth）。它在 GitHub 的 Mac 上自动打包，并在那里检查过：小程序的每个指令都有回应、不会崩溃，能真正截取一个窗口（用“文本编辑”代替放映窗口）并存成投影片图片，主控台能启动，“Mac check”能跑完。**但还没有和真正的 PowerPoint、投影机一起测试过**（GitHub 的 Mac 上没有 PowerPoint），正式使用前请先按下面的“Mac 测试清单”试一次。
 
 打包（Mac 的安装文件只能在 Mac 上产出）：源代码在 GitHub 仓库 `ngxu/stagio`，推送一个 `v*` 标签（例如 `v1.0.0-beta`），或在 Actions 页面点 “Mac build → Run workflow”，GitHub 就会在它的 Mac 上同时打包 Lite、Standard、Extra 三个版本，每个都有 Apple 芯片和 Intel 两种（工作流程在 `.github/workflows/mac.yml`，产物叫 `stagio-mac-<版本>`）。也可以在一台 Mac 上自己执行（打出来的是 Standard）：
 
@@ -80,7 +80,7 @@ GitHub 打出来的文件叫 `Stagio-Extra-1.0.0-beta-mac-<arm64|x64>.dmg` 这�
 
 | 权限 | 用来做什么 | 没有它会怎样 |
 |---|---|---|
-| 自动化：控制 PowerPoint、Spotify、System Events | 翻页、黑白屏、开始结束放映、读取页面；音乐 | 无法控制，请选“好” |
+| 自动化：控制 PowerPoint、“音乐”或 Spotify、System Events | 翻页、黑白屏、开始结束放映、读取页面；音乐 | 无法控制，请选“好” |
 | 屏幕与系统录音（Screen & System Audio Recording） | PROGRAM 实时画面、放映中的真实缩略图 | 主控台会提示去哪里打开；打开后要退出再重开 Stagio |
 | 蓝牙 | 蓝牙遥控 | 蓝牙卡片显示没有权限 |
 | 辅助功能（Accessibility） | 只有“Mac check”读取 PowerPoint 的菜单时用 | 检查报告里这几项显示错误，其余照常 |
@@ -115,7 +115,7 @@ GitHub 打出来的文件叫 `Stagio-Extra-1.0.0-beta-mac-<arm64|x64>.dmg` 这�
 | 区块 | 能做什么 |
 | --- | --- |
 | 投影片 | 侦测已打开的 PowerPoint、开始/结束放映、上下页、跳页（点缩图）、黑屏/白屏；显示 PROGRAM（投影上的画面）、PREVIEW（下一页）、讲者备注（字号可调）、当前页的动画步数、放映计时；打开文件可用系统文件窗口、最近文件或拖放；在 Windows 上特别慢的文件可一键加速（直接改文件，或另存加速副本），外观不变 |
-| 音乐 | Spotify 播放/暂停/切歌/拖进度、音量、**淡出/淡入**、**从指定音量淡到指定音量**、歌单、搜索、加入待播、切换播放设备 |
+| 音乐 | 任何正在放音乐的程序（音乐 App、媒体播放器、浏览器……）：播放/暂停/切歌/拖进度、音量、**淡出/淡入**、**从指定音量淡到指定音量**；歌单直接在那个程序里选 |
 | 输出 | 切换 Windows 音频输出设备（音控台/喇叭/耳机）、系统音量（平滑过渡，不会突然跳）、静音；投影模式（仅电脑/复制/扩展/仅投影）；选择投影片放映在哪个屏幕；隐藏 PowerPoint 自己的演示者视图 |
 | Cue | 一个按钮执行一串动作，例如「音乐淡出 → 开始放映第 1 页」。按数字键 1–9 触发（也可以改成要按 Shift + 1–9），可在 Cues 栏的 Edit 里自定；也可以设成翻到某一页时自动执行 |
 | 开场前检查 | 右上角 **Check**：一个画面列出文件、缩略图、慢文字、投影机、演示者视图、声音、音乐、自动 Cue、手机是否都准备好 |
@@ -189,7 +189,7 @@ GitHub 打出来的文件叫 `Stagio-Extra-1.0.0-beta-mac-<arm64|x64>.dmg` 这�
 | Projector | 有没有接上第二个屏幕（扩展模式），投影片会放在哪个屏幕 | Extend |
 | Presenter View | 接了投影机时，PowerPoint 的演示者视图会不会盖住 Stagio | Hide it |
 | Sound | 目前的输出设备、是否静音、音量是否太低 | Unmute |
-| Music | Spotify 有没有开、Stagio 能不能控制它 | Open Spotify |
+| Music | 有没有程序在放音乐、Stagio 能不能控制它 | 打开上次用的播放程序 |
 | Cues | 这份文件里有几个自动 Cue；Auto 是否关着；绑定的页面是否被删掉 | Turn Auto on / Edit cues |
 | Remote | 有几台手机连着 | Connect… |
 
@@ -349,6 +349,11 @@ PowerPoint 的“打印设置”里的页码范围会在导出时临时改动，
 - **进度和剩余时间**：页面列表标题会显示 `PREPARING IMAGES 12/82 · ABOUT 6 MIN`。
 - **不在你编辑时抢 PowerPoint**：你正在 PowerPoint 里打字或点击时，Stagio 暂停生成缩略图，停手 4 秒后再继续，以免 PowerPoint 卡住。
 
+## 调整页面顺序、隐藏的页面
+
+- **直接在 Stagio 里调整顺序**（电脑上的主控台）：把页面列表里的一页拖到别的位置，PowerPoint 就会把那一页移过去，放映中也可以（正在投影的那一页不会变）。移动后文件还没存，页面列表上方会出现 **Save file**，按一下就存进文件；不存的话，关掉 PowerPoint 时它会问你。
+- **隐藏的页面**：在 PowerPoint 里设成“隐藏幻灯片”的页，页面列表里会变暗、页码划掉，并标上 HIDDEN，标题栏也会写“N hidden”。放映时 PowerPoint 会跳过它们，所以 PREVIEW 显示的是下一张没隐藏的页；直接点隐藏的页仍然可以投出去。在 PowerPoint 里改了隐藏或取消隐藏，Stagio 几秒内就会跟着更新（放映中最慢约 30 秒）。
+
 ## 现场有人同时修改投影片
 
 Stagio 会自动侦测改动：改过的页会更新缩略图，并标上琥珀色 EDITED，保留 30 秒；新增或删除的页面会立即出现在列表里。
@@ -367,30 +372,31 @@ PowerPoint 同一时间只能处理一件事，而且在图片很多的文件上
 - 绿色 CO-EDIT ON：设置正确。
 - LOCAL FILE 或 AUTOSAVE OFF：别人的修改不会同步过来。
 
-## 音乐的三种模式
+## 音乐：用你平常的播放程序
 
-在 Music 区右上角切换 Local / Premium / Off：
+Stagio 不需要任何音乐账号，也不连接任何音乐服务：它控制的是这台电脑上正在放音乐的程序。
 
-| 模式 | 需要 | 能做什么 |
-| --- | --- | --- |
-| **Local**（本机 Spotify，默认） | 这台电脑装了 Spotify，任何账号（免费也行） | 播放/暂停、上一首/下一首、显示歌名和封面、Spotify 音量、淡入淡出 |
-| **Premium** | Spotify Premium + 一次性连接（见下） | 以上全部，加上选歌单、搜索、加入待播、拖进度、切换播放设备 |
-| **Off**（停用） | — | Cue 里的音乐动作会被跳过 |
+- **Windows**：凡是出现在 Windows 自己的媒体控制里的程序都可以（按音量键时出现的那个小框）：Spotify、Apple Music、“媒体播放器”、浏览器里的音乐或影片、VLC 4、装了插件的 foobar2000 等。
+- **Mac**：“音乐”App 或 Spotify（macOS 不让其他程序读取任意播放器在放什么）。
+- **自动跟随**（默认）：Stagio 跟着正在放音乐的程序；已经在跟的那个继续放着时，不会因为别的程序（例如浏览器里的一段影片）开始出声就跳过去。也可以在 Music 区右上角的选单里固定选一个程序。
+- 能做的：播放/暂停、上一首/下一首、点进度条跳到那个位置（程序支持的话）、显示歌名和封面、调整那个程序自己的音量、淡入淡出。歌单请直接在那个程序里选。
+- 淡入淡出只调那个程序自己的音量，系统音量和其他声音不受影响。
+- 第一次用：先在播放程序里放一首歌（之后暂停也可以），主控台就能控制它。之后 Stagio 会记住这个程序，下次它没开时，Music 区和开场前检查会出现 **Open** 按钮。
+- 右上角的 **Off** 关掉音乐控制，Cue 里的音乐动作会被跳过。
 
-本机模式的使用方法：先在 Spotify 应用里播放一首歌（之后暂停也可以），主控台就能控制它。歌单请直接在 Spotify 里选。淡入淡出只调 Spotify 自己的音量，系统音量和其他声音不受影响。注意：免费账号会插播广告，部分歌单只能随机播放。
+注意：用串流服务在公开场合放音乐，要遵守那个服务自己的使用条款和当地的版权规定。
 
 ### 音乐淡入淡出（0.7.2 起不再有“哔哔啵啵”的杂音）
 
 Windows 改变一个程序的音量时是立刻生效的，所以每改一次，声波就会断开一下。0.7.2 以前，淡入淡出大约每 0.1 秒改一格，每格就是一个小爆音，连起来像炸麦的“哔哔啵啵”。用测试音实测：断口平均是声波高度的 4%，最大到 20%。
 
-现在淡入淡出在后台的音频程序里一次跑完：先找到 Spotify 的音量控制，之后每约 2 毫秒调一点，按耳朵的感觉均匀变化（每秒同样多分贝，降到 −50 dB 后静音）。实测断口约 1%，没有超过 10% 的，听起来是连续的。另外：
+现在淡入淡出在后台的音频程序里一次跑完：先找到播放程序的音量控制，之后每约 2 毫秒调一点，按耳朵的感觉均匀变化（每秒同样多分贝，降到 −50 dB 后静音）。实测断口约 1%，没有超过 10% 的，听起来是连续的。另外：
 
 - 拖 Level 滑杆或 Cue 设定音量时，用 0.3 秒滑过去，而不是直接跳（直接跳也会“啵”一声）。
-- 淡出完成并暂停后，要等 Spotify 真的停下来才把音量调回原值，结尾不会突然冒出一小段原音量的声音。
-- Spotify 刚打开、还没播放过就淡入时，它的声音一出现就立刻调成静音，再开始淡入，开头不会先大声响一下。
+- 淡出完成并暂停后，要等播放程序真的停下来才把音量调回原值，结尾不会突然冒出一小段原音量的声音。
+- 播放程序刚打开、还没播放过就淡入时，它的声音一出现就立刻调成静音，再开始淡入，开头不会先大声响一下。
 - 淡出做到一半又按淡入，会从当时的音量平滑往回升，不会跳。
 
-Premium 模式的音量是通过 Spotify 的网络服务调的（每 0.2 秒一次），没办法做到这么细；如果在意，请用 Local 模式。
 
 ### 从指定音量淡到指定音量
 
@@ -439,16 +445,6 @@ Output 区的 System 滑杆、以及 Cue 里的 “Output · system volume”，
 4. 网页完全打不开时，可能是电脑上的安全软件拦截了 7300 端口，请在里面允许 Stagio 或 7300 端口。
 5. 用聊天软件扫码打不开时，改用手机自带的相机或浏览器，或者手动输入网址再输入 PIN。
 
-## 连接 Spotify Premium（一次性）
-
-切换到 Premium 模式后，按以下步骤连接：
-
-1. 打开 <https://developer.spotify.com/dashboard> → Create app
-2. Redirect URI 填 `http://127.0.0.1:7300/spotify/callback`，勾选 Web API
-3. 把 Client ID 贴到 Music 区，再点 Connect Spotify
-
-控制播放需要 Spotify Premium。
-
 ## 结构
 
 ```
@@ -464,8 +460,7 @@ mac/helper/             Mac 小程序（Swift）：屏幕、音频输出、截�
 lib/powerpoint.js       Windows：放映状态、后台页面列表、修改侦测、缩略图
 lib/helper.js           Windows：与常驻 PowerShell 进程通信
 ps/helper.ps1           Windows：PowerPoint COM、Core Audio、媒体控制、截取放映画面
-lib/localmusic.js       Windows：本机 Spotify 应用
-lib/spotify.js          Spotify Premium（Web API）
+lib/localmusic.js       Windows：正在放音乐的程序（Windows 媒体控制）
 lib/fade.js             淡入淡出（两种音乐模式共用）
 lib/output.js           Windows：音频输出与投影模式
 lib/programfeed.js      Windows：PROGRAM 画面截取
@@ -490,7 +485,7 @@ node test/checks.js --server
 
 ## 压力测试
 
-先启动服务器（`npm run dev`），再用一份 100 页的 .pptx 执行压测。测试会实际放映这份文件，期间屏幕会被全屏占用；如果 Spotify 正在播放，也会测试淡入淡出：
+先启动服务器（`npm run dev`），再用一份 100 页的 .pptx 执行压测。测试会实际放映这份文件，期间屏幕会被全屏占用；如果有程序正在放音乐，也会测试淡入淡出：
 
 ```bash
 npm run stress -- "D:\路径\测试.pptx"

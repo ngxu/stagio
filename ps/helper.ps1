@@ -595,6 +595,7 @@ namespace Stagio {
   public class ScanResult {
     public List<int> ids { get; set; }          // every slide's ID, in show order (cheap)
     public List<SlideInfo> slides { get; set; } // details for requested and newly seen slides
+    public List<int> hiddenIds { get; set; }    // every hidden slide (whole list read only)
   }
 
   public static class PptScan {
@@ -629,8 +630,15 @@ namespace Stagio {
         return r;
       }
       r.ids = new List<int>();
+      r.hiddenIds = new List<int>();
       List<dynamic> all = new List<dynamic>();
-      foreach (dynamic s in pres.Slides) { all.Add(s); r.ids.Add((int)s.SlideID); }
+      foreach (dynamic s in pres.Slides) {
+        all.Add(s);
+        int sid = (int)s.SlideID;
+        r.ids.Add(sid);
+        // hidden in PowerPoint: kept current for every slide, not only new ones
+        try { if ((int)s.SlideShowTransition.Hidden == -1) r.hiddenIds.Add(sid); } catch { }
+      }
 
       System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
       Dictionary<int, SlideInfo> byIndex = new Dictionary<int, SlideInfo>();
@@ -781,11 +789,14 @@ function PPT-Slides($a) {
   $r = [Stagio.PptScan]::Scan($p.FullName, $want, $known, $budget, $listAll)
   $ids = $null
   if ($null -ne $r.ids) { $ids = [object[]]$r.ids.ToArray() }
+  $hidden = $null
+  if ($null -ne $r.hiddenIds) { $hidden = [object[]]$r.hiddenIds.ToArray() }
   return @{
     path   = $p.FullName
     ratio  = [double]($p.PageSetup.SlideWidth / $p.PageSetup.SlideHeight)
     ids    = $ids
     slides = @($r.slides)
+    hiddenIds = $hidden
   }
 }
 
@@ -1409,9 +1420,32 @@ function PPT-SetState($name) {
   return $ppSlideShowStates[[int]$target]
 }
 
-# ---------------- Local music (Spotify app, no Premium needed) ----------------
-# Uses Windows' media controls (the same ones the volume flyout uses) to read the track
-# and play/pause/skip, and the app's own Volume Mixer slider for fades.
+# Reorder: the slide with this ID goes to position "to", with PowerPoint's own "move slide" (also
+# during a show; PowerPoint keeps showing the same slide). The file is changed, not saved.
+function PPT-MoveSlide($a) {
+  $pres = Find-Presentation (Require-PPT) $a.path
+  try { $s = $pres.Slides.FindBySlideID([int]$a.id) } catch { throw 'That slide no longer exists' }
+  $count = $pres.Slides.Count
+  $to = [Math]::Max(1, [Math]::Min($count, [int]$a.to))
+  if ($s.SlideIndex -ne $to) { $s.MoveTo($to) }
+  return @{ index = [int]$s.SlideIndex; count = [int]$count }
+}
+
+# Saves the file (after a reorder), as Ctrl+S in PowerPoint would. Only a file that has a place
+# (a new, never-saved presentation would open a dialog in PowerPoint).
+function PPT-Save($a) {
+  $pres = Find-Presentation (Require-PPT) $a.path
+  if (-not $pres.Path) { throw 'This presentation has never been saved: save it in PowerPoint first' }
+  if ($pres.ReadOnly -eq -1) { throw 'This file is read-only: save it in PowerPoint under another name' }
+  $pres.Save()
+  return $true
+}
+
+# ---------------- Music: whichever app plays it (no account or sign-in needed) ----------------
+# Any player that appears in Windows' own media controls (the box above the volume flyout):
+# Spotify, Apple Music, Media Player, a browser tab, VLC 4, foobar2000 with its plugin, ...
+# Play/pause/skip go through those media controls; the level and fades change only that app's
+# own audio (its Volume Mixer slider), so the system volume and other apps are untouched.
 
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $script:asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
@@ -1429,27 +1463,93 @@ $script:artKey = ''
 $script:art = $null
 $script:artCount = 0
 $script:asStream = [System.IO.WindowsRuntimeStreamExtensions].GetMethod('AsStreamForRead', [Type[]]@([Windows.Storage.Streams.IInputStream]))
+$script:musicPick = ''        # the app Stagio follows (its media-controls ID); kept while it stays
+$script:musicProc = 'Spotify' # its process name, for the level and fades
+$script:appInfo = @{}         # media-controls ID -> @{ id; name; process; path }
 
-function Get-SpotifySession {
+function Get-MediaManager {
   if (-not $script:mediaMgr) {
     $script:mediaMgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
   }
-  foreach ($s in $script:mediaMgr.GetSessions()) { if ($s.SourceAppUserModelId -match 'spotify') { return $s } }
-  return $null
+  return $script:mediaMgr
 }
 
-function Music-State {
-  $running = [bool](Get-Process -Name Spotify -ErrorAction SilentlyContinue)
-  $s = $null
-  if ($running) { $s = Get-SpotifySession }
-  if (-not $s) { return @{ running = $running; session = $false; volume = [Stagio.AppVolume]::Get('Spotify') } }
+# Media-controls IDs are app IDs, not process names: "Spotify.exe", "Chrome", "MSEdge",
+# "308046B0AF4A39CB" (Firefox), "Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic" (Media Player), ...
+$script:knownApps = @(
+  @('spotify', 'Spotify'), @('^chrome$|google\.?chrome', 'chrome'), @('msedge', 'msedge'),
+  @('^308046B0AF4A39CB$|firefox', 'firefox'), @('zunemusic', 'Microsoft.Media.Player'),
+  @('applemusic', 'AppleMusic'), @('itunes', 'iTunes'), @('vlc', 'vlc'), @('brave', 'brave'),
+  @('opera', 'opera'), @('foobar2000', 'foobar2000'), @('musicbee', 'MusicBee'), @('aimp', 'AIMP')
+)
+function Resolve-AppProcess($id) {
+  if ($id -match '([^\\!]+)\.exe$') { return $Matches[1] }
+  foreach ($k in $script:knownApps) { if ($id -match $k[0]) { return $k[1] } }
+  if ($id -match '^([^!_]+)_[^!]*!') {
+    # a Store app (Package_publisher!App): the running process that lives in that package
+    $pkg = $Matches[1]
+    $p = Get-Process | Where-Object { $_.Path -like "*\WindowsApps\$pkg*" } | Select-Object -First 1
+    if ($p) { return $p.ProcessName }
+  }
+  return (($id -split '[!\\]')[-1] -replace '\.exe$', '')
+}
+
+function Get-AppInfo($id) {
+  $c = $script:appInfo[$id]
+  if ($c) { return $c }
+  $proc = Resolve-AppProcess $id
+  $c = @{ id = $id; name = $proc; process = $proc; path = $null }
+  $p = Get-Process -Name $proc -ErrorAction SilentlyContinue | Where-Object { $_.Path } | Select-Object -First 1
+  if ($p) {
+    $c.path = $p.Path
+    try { $d = $p.MainModule.FileVersionInfo.FileDescription; if ($d) { $c.name = $d.Trim() } } catch { }
+    $script:appInfo[$id] = $c   # remembered once the app's process was seen
+  }
+  return $c
+}
+
+# The app to follow. A chosen one ($want), or automatically: the one already followed while it
+# plays, else Windows' current one if it plays, else any that plays, else the one followed before,
+# else Windows' current one. So music from a second app (a video in a browser) doesn't take over.
+function Select-MusicSession($want) {
+  $mgr = Get-MediaManager
+  $sessions = @($mgr.GetSessions())
+  if ($want) { return ($sessions | Where-Object { $_.SourceAppUserModelId -eq $want } | Select-Object -First 1) }
+  if ($sessions.Count -eq 0) { return $null }
+  $cur = $mgr.GetCurrentSession()
+  $playing = @($sessions | Where-Object { [string]$_.GetPlaybackInfo().PlaybackStatus -eq 'Playing' })
+  $pick = $playing | Where-Object { $_.SourceAppUserModelId -eq $script:musicPick } | Select-Object -First 1
+  if (-not $pick -and $cur) { $pick = $playing | Where-Object { $_.SourceAppUserModelId -eq $cur.SourceAppUserModelId } | Select-Object -First 1 }
+  if (-not $pick) { $pick = $playing | Select-Object -First 1 }
+  if (-not $pick) { $pick = $sessions | Where-Object { $_.SourceAppUserModelId -eq $script:musicPick } | Select-Object -First 1 }
+  if (-not $pick) { $pick = $cur }
+  if (-not $pick) { $pick = $sessions[0] }
+  return $pick
+}
+
+function Music-State($a) {
+  $mgr = Get-MediaManager
+  $sources = @($mgr.GetSessions() | ForEach-Object {
+    $i = Get-AppInfo $_.SourceAppUserModelId
+    @{ id = $i.id; name = $i.name; playing = ([string]$_.GetPlaybackInfo().PlaybackStatus -eq 'Playing') }
+  })
+  $s = Select-MusicSession $a.source
+  if (-not $s) {
+    # nothing to follow; a chosen app that is open but has not played yet still counts as running
+    $running = $false
+    if ($a.source) { $i = Get-AppInfo $a.source; $script:musicProc = $i.process; $running = [bool](Get-Process -Name $i.process -ErrorAction SilentlyContinue) }
+    return @{ running = $running; session = $false; sources = $sources; app = $(if ($a.source) { Get-AppInfo $a.source } else { $null }); volume = $(if ($running) { [Stagio.AppVolume]::Get($script:musicProc) } else { -1 }) }
+  }
+  $app = Get-AppInfo $s.SourceAppUserModelId
+  $script:musicPick = $app.id
+  $script:musicProc = $app.process
   $status = [string]$s.GetPlaybackInfo().PlaybackStatus
   $props = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
   $tl = $s.GetTimelineProperties()
   $pos = $tl.Position.TotalMilliseconds
   if ($status -eq 'Playing') { $pos += ([DateTimeOffset]::Now - $tl.LastUpdatedTime).TotalMilliseconds }
   # Album art is written to a file once per track; the console loads it from /api/music/art.
-  $key = "$($props.Title)|$($props.Artist)"
+  $key = "$($app.id)|$($props.Title)|$($props.Artist)"
   if ($key -ne $script:artKey) {
     $script:artKey = $key
     $script:art = $null
@@ -1469,9 +1569,12 @@ function Music-State {
       }
     } catch { }
   }
+  $end = $tl.EndTime.TotalMilliseconds
   return @{
     running    = $true
     session    = $true
+    app        = $app
+    sources    = $sources
     isPlaying  = ($status -eq 'Playing')
     status     = $status
     title      = $props.Title
@@ -1479,32 +1582,36 @@ function Music-State {
     album      = $props.AlbumTitle
     art        = $script:art
     positionMs = [int64][Math]::Max(0, $pos)
-    durationMs = [int64]$tl.EndTime.TotalMilliseconds
-    volume     = [Stagio.AppVolume]::Get('Spotify')
+    durationMs = [int64][Math]::Max(0, $end)
+    canSeek    = [bool]$s.GetPlaybackInfo().Controls.IsPlaybackPositionEnabled
+    volume     = [Stagio.AppVolume]::Get($app.process)
   }
 }
 
-function Music-Do($action) {
-  $s = Get-SpotifySession
-  if (-not $s) { throw 'Spotify is not available yet: play any track in the Spotify app once (pausing afterwards is fine)' }
-  switch ($action) {
+function Music-Do($a) {
+  $s = Select-MusicSession $a.source
+  if (-not $s) { throw 'No music app to control: start the music once in your player (pausing afterwards is fine)' }
+  switch ($a.action) {
     'play'     { $op = $s.TryPlayAsync() }
     'pause'    { $op = $s.TryPauseAsync() }
     'toggle'   { $op = $s.TryTogglePlayPauseAsync() }
     'next'     { $op = $s.TrySkipNextAsync() }
     'previous' { $op = $s.TrySkipPreviousAsync() }
-    default    { throw "Unknown action: $action" }
+    'seek'     { $op = $s.TryChangePlaybackPositionAsync([int64]([double]$a.ms * 10000)) }
+    default    { throw "Unknown action: $($a.action)" }
   }
   return (Await $op ([bool]))
 }
 
-function Music-Launch {
-  if (Get-Process -Name Spotify -ErrorAction SilentlyContinue) { return 'running' }
-  $exe = Join-Path $env:APPDATA 'Spotify\Spotify.exe'
-  if (Test-Path $exe) { Start-Process $exe; return 'started' }
-  $pkg = Get-AppxPackage -Name '*Spotify*' | Select-Object -First 1
-  if ($pkg) { Start-Process "shell:AppsFolder\$($pkg.PackageFamilyName)!Spotify"; return 'started' }
-  throw 'Spotify is not installed on this PC'
+# Opens the music app Stagio followed last (or the chosen one): a Store app through its app ID,
+# a desktop app through the program file seen while it played.
+function Music-Launch($a) {
+  $id = [string]$a.id
+  $proc = if ($id) { (Get-AppInfo $id).process } else { '' }
+  if ($proc -and (Get-Process -Name $proc -ErrorAction SilentlyContinue)) { return 'running' }
+  if ($id -match '!') { Start-Process "shell:AppsFolder\$id"; return 'started' }
+  if ($a.path -and (Test-Path $a.path)) { Start-Process $a.path; return 'started' }
+  throw 'Open your music app on this PC and start the music once'
 }
 
 # ---------------- Program feed (screen capture of the show window) ----------------
@@ -2167,6 +2274,8 @@ function Invoke-Command2($cmd, $a) {
       return $true
     }
     'ppt.prev'      { $v = Get-ShowView; Clear-BlackWhite $v; $v.Previous(); return $true }
+    'ppt.moveSlide' { return PPT-MoveSlide $a }
+    'ppt.save'      { return PPT-Save $a }
     'ppt.goto'      {
       $v = Get-ShowView; Clear-BlackWhite $v
       # By slide ID when given: the number the console knows may be stale if slides were just
@@ -2202,21 +2311,21 @@ function Invoke-Command2($cmd, $a) {
     'show.captureSlide' { return [Stagio.ShowCapture]::CaptureSlide([string]$a.out, [double]$a.ratio, [string]$a.ref, [long]$a.hwnd) }
     'show.compareWindow' { return [Stagio.ShowCapture]::CompareWindow([long]$a.hwnd, [double]$a.ratio, [string]$a.ref) }   # tests
     'sys.activity'  { $x = [Stagio.ShowCapture]::Activity() -split '\|'; return @{ app = $x[0]; idleMs = [long]$x[1] } }
-    'music.state'   { return Music-State }
-    'music.do'      { return Music-Do $a.action }
-    'music.launch'  { return Music-Launch }
+    'music.state'   { return Music-State $a }
+    'music.do'      { return Music-Do $a }
+    'music.launch'  { return Music-Launch $a }
     'music.volume'  {
       # glideMs: a short glide instead of a jump (a jump of the level clicks while music plays)
       if ($a.glideMs) {
-        $id = [Stagio.AppVolume]::StartFade('Spotify', -1, [int]$a.value, [int]$a.glideMs)
+        $id = [Stagio.AppVolume]::StartFade($script:musicProc, -1, [int]$a.value, [int]$a.glideMs)
         if ($id) { return 1 }
       }
-      return [Stagio.AppVolume]::Set('Spotify', [int]$a.value)
+      return [Stagio.AppVolume]::Set($script:musicProc, [int]$a.value)
     }
-    'music.fade'        { return [Stagio.AppVolume]::StartFade('Spotify', [int]$(if ($null -ne $a.from) { $a.from } else { -1 }), [int]$a.to, [int]$a.ms) }
+    'music.fade'        { return [Stagio.AppVolume]::StartFade($script:musicProc, [int]$(if ($null -ne $a.from) { $a.from } else { -1 }), [int]$a.to, [int]$a.ms) }
     'music.fadeStop'    { [Stagio.AppVolume]::StopFade([int]$a.id); return $true }
     'music.fadeStatus'  { $x = [Stagio.AppVolume]::FadeStatus([int]$a.id) -split '\|'; return @{ state = $x[0]; level = [int]$x[1] } }
-    'music.silenceWhenReady' { return [Stagio.AppVolume]::SilenceWhenReady('Spotify', [int]$a.ms) }
+    'music.silenceWhenReady' { return [Stagio.AppVolume]::SilenceWhenReady($script:musicProc, [int]$a.ms) }
     default         { throw "Unknown command: $cmd" }
   }
 }

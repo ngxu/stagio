@@ -224,9 +224,9 @@ function applyState(patch) {
   if (S.ppt) S.ppt.slides = S.slides || null; // the slide list travels as its own part
   const has = (...keys) => full || keys.some((k) => k in patch);
   if (has('edition')) applyEdition();
-  if (has('ppt', 'localMusic', 'spotify', 'features')) renderStatus();
+  if (has('ppt', 'localMusic', 'features')) renderStatus();
   if (has('ppt', 'slides', 'program', 'cues', 'recent', 'fastCopy')) renderSlides();
-  if (has('localMusic', 'spotify', 'features')) renderMusic();
+  if (has('localMusic', 'features')) renderMusic();
   if (has('audio', 'displays', 'displayMode', 'platform', 'ppt', 'settings')) renderOutput();
   if (has('cues', 'cueRunning', 'slides', 'settings')) renderCues();
   if (has('recent')) renderRecent();
@@ -284,16 +284,11 @@ function renderStatus() {
 
   const mode = musicMode();
   if (mode === 'off') setSt('#stMusic', '', 'OFF');
-  else if (mode === 'local') {
+  else {
     const lm = S.localMusic || {};
-    if (!lm.running) setSt('#stMusic', 'bad', 'NOT RUNNING');
+    if (!lm.running) setSt('#stMusic', 'bad', 'NO PLAYER');
     else if (!lm.session) setSt('#stMusic', 'warn', 'IDLE');
     else setSt('#stMusic', lm.isPlaying ? 'ok' : 'warn', lm.fading ? 'FADING' : lm.isPlaying ? 'PLAYING' : 'PAUSED');
-  } else {
-    const sp = S.spotify;
-    if (!sp.authorized) setSt('#stMusic', 'bad', 'NOT CONNECTED');
-    else if (sp.error) setSt('#stMusic', 'warn', 'ERROR');
-    else setSt('#stMusic', sp.player?.isPlaying ? 'ok' : 'warn', sp.fading ? 'FADING' : sp.player?.isPlaying ? 'PLAYING' : 'PAUSED');
   }
 }
 
@@ -398,6 +393,7 @@ function renderSlides() {
   // Leave the picker alone while it is open.
   if (document.activeElement !== presSelect && p.focus && presSelect.value !== p.focus) presSelect.value = p.focus;
   presSelect.disabled = !!p.show || pres.length < 2;
+  renderSaveDeck();
 
   renderCoedit(p);
 
@@ -523,11 +519,13 @@ function renderStrip(p, list, cur) {
     strip.dataset.cur = '';
     strip.innerHTML = list.map((s) => `
       <button class="thumb" data-n="${s.index}" data-id="${s.id}">
-        <img loading="lazy" alt="">
+        <img loading="lazy" alt="" draggable="false">
         <span class="n">${s.index}</span>
         <span class="c"></span>
+        <span class="h">Hidden</span>
         <span class="t"></span>
       </button>`).join('');
+    for (const b of strip.children) b.draggable = canReorder();
   }
   // The slide's own shape for the tiles and for PROGRAM / PREVIEW (4:3 decks get 4:3 frames), so
   // a slide always shows whole and as big as it fits, whatever screen the projector is.
@@ -557,6 +555,7 @@ function renderStrip(p, list, cur) {
     const t = b.lastElementChild;
     if (t.textContent !== (s.title || ' ')) { t.textContent = s.title || ' '; b.title = s.title; }
     b.classList.toggle('hidden-slide', s.hidden);
+    if (s.hidden) b.title = `Hidden in PowerPoint: the show skips it${s.title ? ` · ${s.title}` : ''}`;
     b.classList.toggle('changed', !!s.changed);
     b.classList.toggle('draft', !!s.draft && !s.changed);
     b.classList.toggle('current', s.index === cur);
@@ -574,7 +573,8 @@ function renderStrip(p, list, cur) {
   else if (pending && sl.paused) progress = ` · images ${total - pending}/${total}, paused while PowerPoint is in use`;
   else if (pending) progress = ` · preparing images ${total - pending}/${total}${sl.etaSec ? ` · ${fmtEta(sl.etaSec)}` : ''}`;
   const draftNote = sl.drafts ? ` · ${sl.drafts} draft image${sl.drafts === 1 ? '' : 's'} (exact ones follow)` : '';
-  $('#stripTitle').textContent = total ? `${total} slides${edited ? ` · ${edited} edited` : ''}${progress}${draftNote}${fontNote}`
+  const hiddenN = list.filter((x) => x.hidden).length;
+  $('#stripTitle').textContent = total ? `${total} slides${hiddenN ? ` · ${hiddenN} hidden` : ''}${edited ? ` · ${edited} edited` : ''}${progress}${draftNote}${fontNote}`
     : S.fastCopy?.job?.state === 'running' ? 'Slides · listed once PowerPoint has made the faster copy' : 'Slides';
   $('#stripTitle').classList.toggle('busy', !!pending);
   $('#stripTitle').title = !fonts ? ''
@@ -588,6 +588,64 @@ function renderStrip(p, list, cur) {
 }
 
 presSelect.addEventListener('change', () => post('/api/ppt/focus', { path: presSelect.value }));
+
+// ---- reorder: drag a tile to another place (on the PC's desk, with a mouse) ----
+// PowerPoint moves the slide (also during a show); the file is then changed but not saved, so a
+// "Save file" button stays up for that file until it is saved from here.
+const canReorder = () => isPC && !matchMedia('(pointer: coarse)').matches;
+document.body.classList.toggle('can-reorder', canReorder());
+$('#strip').classList.toggle('reorder', canReorder());
+let dragFrom = null;   // { id, n }
+let unsavedDeck = null;
+const clearDrop = () => $$('.thumb.drop-before, .thumb.drop-after', $('#strip')).forEach((t) => t.classList.remove('drop-before', 'drop-after'));
+$('#strip').addEventListener('dragstart', (e) => {
+  const b = e.target.closest('.thumb');
+  if (!b || !canReorder()) return;
+  dragFrom = { id: Number(b.dataset.id), n: Number(b.dataset.n) };
+  b.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(dragFrom.id));
+});
+$('#strip').addEventListener('dragend', () => { dragFrom = null; clearDrop(); $$('.thumb.dragging').forEach((t) => t.classList.remove('dragging')); });
+const dropSide = (b, e) => { const r = b.getBoundingClientRect(); return e.clientX < r.left + r.width / 2 ? 'before' : 'after'; };
+$('#strip').addEventListener('dragover', (e) => {
+  const b = e.target.closest('.thumb');
+  if (!dragFrom || !b) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const side = dropSide(b, e);
+  if (!b.classList.contains(`drop-${side}`)) { clearDrop(); b.classList.add(`drop-${side}`); }
+});
+$('#strip').addEventListener('drop', async (e) => {
+  const b = e.target.closest('.thumb');
+  const from = dragFrom;
+  clearDrop();
+  if (!from || !b) return;
+  e.preventDefault();
+  const t = Number(b.dataset.n);
+  const side = dropSide(b, e);
+  // the position the slide ends up at, counted in the new order
+  const to = side === 'before' ? (from.n > t ? t : t - 1) : (from.n > t ? t + 1 : t);
+  if (to === from.n) return;
+  const deck = S.ppt.focus;
+  try {
+    await api('/api/ppt/move', { path: deck, id: from.id, to });
+    unsavedDeck = deck;
+    renderSaveDeck();
+    toast(`Slide ${from.n} moved to ${to}. Not saved yet: "Save file" keeps the new order.`, 'info');
+  } catch { /* toast shown */ }
+});
+function renderSaveDeck() {
+  $('#btnSaveDeck').classList.toggle('hidden', !unsavedDeck || unsavedDeck !== S.ppt?.focus);
+}
+$('#btnSaveDeck').addEventListener('click', async () => {
+  try {
+    await api('/api/ppt/save', { path: unsavedDeck });
+    toast('Saved', 'info');
+    unsavedDeck = null;
+    renderSaveDeck();
+  } catch { /* toast shown */ }
+});
 $('#strip').addEventListener('click', (e) => {
   const b = e.target.closest('.thumb');
   // Clicking a tile while no show runs starts one at that slide, which can take a while.
@@ -881,111 +939,65 @@ window.addEventListener('drop', (e) => {
 
 // ---------------- music ----------------
 
-let prog = { pos: 0, dur: 0, at: 0, playing: false };
-let setupKey = '';
-let playlistsLoaded = false;
+let prog = { pos: 0, dur: 0, at: 0, playing: false, seek: false };
 
 $('#btnPrevTrack').innerHTML = ICON.prev;
 $('#btnNextTrack').innerHTML = ICON.next;
-$('#btnShuffle').innerHTML = ICON.shuffle;
-$('#btnRepeat').innerHTML = ICON.repeat;
 $('#btnPlay').innerHTML = ICON.play;
 
-function renderSetup(sp) {
-  const mode = !sp.configured ? 'clientId' : !sp.authorized ? 'login' : 'ok';
-  const key = `${mode}|${sp.redirectUri}`;
-  const box = $('#spotifySetup');
-  $('#spotifyMain').classList.toggle('hidden', mode !== 'ok');
-  box.classList.toggle('hidden', mode === 'ok');
-  if (key === setupKey) return;
-  setupKey = key;
-  if (mode === 'clientId') {
-    box.innerHTML = `
-      <h3>Connect Spotify Premium</h3>
-      <ol>
-        <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a>, sign in, and choose <b>Create app</b>.</li>
-        <li>Set the Redirect URI to <code>${esc(sp.redirectUri)}</code></li>
-        <li>Tick <b>Web API</b>, save, and paste the <b>Client ID</b> here.</li>
-      </ol>
-      <div class="inline"><input type="text" class="mono" id="clientIdInput" placeholder="Client ID"><button class="btn primary" id="btnSaveClientId">Save</button></div>`;
-    $('#btnSaveClientId').onclick = async () => {
-      const clientId = $('#clientIdInput').value.trim();
-      if (!clientId) return toast('Paste the Client ID first');
-      await post('/api/spotify/config', { clientId });
-    };
-  } else if (mode === 'login') {
-    box.innerHTML = isPC
-      ? `<h3>Authorize Stagio</h3>
-         <p class="dim">Opens the Spotify sign-in page and returns here when done.</p>
-         <a class="btn primary" href="/spotify/login">Connect Spotify</a>
-         <p style="margin-top:10px"><button class="link" id="btnResetClient">Use a different Client ID</button></p>`
-      : '<h3>Spotify not connected</h3><p class="dim">Connect it from the console on the PC.</p>';
-    $('#btnResetClient')?.addEventListener('click', () => post('/api/spotify/config', { clientId: '' }));
-  } else {
-    box.innerHTML = '';
-  }
-}
+const musicMode = () => (edHas('music') ? (S?.features?.music === 'off' ? 'off' : 'local') : 'off');
 
-const musicMode = () => (edHas('music') ? S?.features?.music || 'off' : 'off');
-
-/** Local-mode notice when the Spotify app isn't open or hasn't played yet. Returns true if shown. */
+/** Notice when no app plays music yet. Returns true if shown. */
 function renderLocalHint(lm) {
   const box = $('#localHint');
   let html = '';
+  const want = lm?.pinned ? (lm.app?.name || 'The chosen app') : '';
+  const open = lm?.lastApp ? `<button class="btn sm" id="btnLaunchMusic">Open ${esc(lm.lastApp.name)}</button>` : '';
   if (lm?.error) html = `<p>${esc(lm.error)}</p>`;
-  else if (lm && !lm.running) html = '<p>Spotify is not running on this PC.</p><button class="btn sm" id="btnLaunchSpotify">Launch Spotify</button>';
-  else if (lm && !lm.session) html = '<p>Spotify is open. Play any track once (pausing afterwards is fine) so Stagio can take control.</p>';
+  else if (lm && !lm.running && want) html = `<p>${esc(want)} is not open on this PC.</p>${open}`;
+  else if (lm && !lm.running) html = `<p>No app is playing music on this PC. Start the music in any player (a music app, a media player or a browser): Stagio follows it.</p>${open}`;
+  else if (lm && !lm.session) html = `<p>${esc(want || 'The music app')} is open. Start the music once (pausing afterwards is fine) so Stagio can take control.</p>`;
   box.classList.toggle('hidden', !html);
   if (box.dataset.html !== html) {
     box.dataset.html = html;
     box.innerHTML = html;
-    $('#btnLaunchSpotify')?.addEventListener('click', () => post('/api/music/launch'));
+    $('#btnLaunchMusic')?.addEventListener('click', () => post('/api/music/launch'));
   }
   return !!html;
 }
 
+/** The app picker: Automatic, every app in the media controls, and the chosen one if it is gone. */
+function renderSource(lm) {
+  const sel = $('#musicSource');
+  const list = [...(lm?.sources || [])];
+  if (lm?.pinned && !list.some((x) => x.id === lm.pinned)) list.push({ id: lm.pinned, name: lm.app?.name || lm.lastApp?.name || 'Chosen app', gone: true });
+  const auto = !lm?.pinned && lm?.app ? `Automatic · ${lm.app.name}` : 'Automatic';
+  const opts = [`<option value="">${esc(auto)}</option>`]
+    .concat(list.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}${x.gone ? ' (not open)' : x.playing ? ' · playing' : ''}</option>`)).join('');
+  if (sel.dataset.opts !== opts) { sel.innerHTML = opts; sel.dataset.opts = opts; }
+  if (document.activeElement !== sel) sel.value = lm?.pinned || '';
+}
+$('#musicSource').addEventListener('change', (e) => post('/api/music/source', { id: e.target.value }));
+
 function renderMusic() {
-  const sp = S.spotify;
   const mode = musicMode();
   document.body.classList.toggle('no-music', mode === 'off');
-  document.body.classList.toggle('music-local', mode === 'local');
   $$('#musicMode button').forEach((b) => b.classList.toggle('on', b.dataset.music === mode));
-  $('#spotifyOff').classList.toggle('hidden', mode !== 'off');
-  if (mode !== 'local') $('#localHint').classList.add('hidden');
-  if (mode !== 'spotify') { $('#spotifySetup').classList.add('hidden'); setupKey = ''; }
-  if (mode === 'off') { $('#spotifyMain').classList.add('hidden'); return; }
+  $('#musicOff').classList.toggle('hidden', mode !== 'off');
+  $('#musicSource').classList.toggle('hidden', mode === 'off');
+  if (mode === 'off') { $('#localHint').classList.add('hidden'); $('#musicMain').classList.add('hidden'); return; }
 
-  // Normalise both modes to one "now playing" shape.
-  let np;
-  if (mode === 'local') {
-    const lm = S.localMusic || {};
-    const blocked = renderLocalHint(S.localMusic);
-    $('#spotifyMain').classList.toggle('hidden', blocked && !lm.session);
-    np = {
-      isPlaying: !!lm.isPlaying, title: lm.title, artist: lm.artist, image: lm.art,
-      device: lm.session ? 'Spotify app · this PC' : '',
-      volume: lm.volume >= 0 ? lm.volume : null,
-      pos: lm.positionMs || 0, dur: lm.durationMs || 0, fading: lm.fading,
-      idle: 'Play a track in the Spotify app',
-    };
-  } else {
-    renderSetup(sp);
-    if (!sp.authorized) return;
-    if (!playlistsLoaded) { playlistsLoaded = true; loadPlaylists(); }
-    const pl = sp.player;
-    const it = pl?.item;
-    np = {
-      isPlaying: !!pl?.isPlaying, title: it?.name, artist: it?.artists, image: it?.image,
-      device: pl?.device ? `${pl.device.name} · ${pl.device.type}` : '',
-      volume: pl?.device?.supportsVolume === false ? null : pl?.device?.volume ?? null,
-      pos: pl?.progressMs || 0, dur: it?.durationMs || 0, fading: sp.fading,
-      idle: sp.error || 'Open Spotify on this PC or pick a device under Devices',
-    };
-    $('#btnShuffle').classList.toggle('active', !!pl?.shuffle);
-    $('#btnRepeat').classList.toggle('active', pl?.repeat && pl.repeat !== 'off');
-    $('#btnRepeat').title = `Repeat: ${pl?.repeat || 'off'}`;
-    $$('.row', $('#playlistList')).forEach((r) => r.classList.toggle('playing', r.dataset.uri === pl?.context));
-  }
+  const lm = S.localMusic || {};
+  renderSource(lm);
+  const blocked = renderLocalHint(S.localMusic);
+  $('#musicMain').classList.toggle('hidden', blocked && !lm.session);
+  const np = {
+    isPlaying: !!lm.isPlaying, title: lm.title, artist: lm.artist, image: lm.art,
+    device: lm.session && lm.app ? `${lm.app.name} · this PC` : '',
+    volume: lm.volume >= 0 ? lm.volume : null,
+    pos: lm.positionMs || 0, dur: lm.durationMs || 0, fading: lm.fading,
+    idle: 'Start the music in the app',
+  };
 
   $('#trackName').textContent = np.title || 'Nothing playing';
   $('#trackArtist').textContent = np.title ? (np.artist || '') : np.idle;
@@ -996,15 +1008,15 @@ function renderMusic() {
   const icon = np.isPlaying ? ICON.pause : ICON.play;
   if ($('#btnPlay').dataset.icon !== icon) { $('#btnPlay').innerHTML = icon; $('#btnPlay').dataset.icon = icon; }
   syncSlider($('#musicVol'), $('#musicVolOut'), np.volume);
-  prog = { pos: np.pos, dur: np.dur, at: performance.now(), playing: np.isPlaying };
+  prog = { pos: np.pos, dur: np.dur, at: performance.now(), playing: np.isPlaying, seek: !!lm.canSeek };
+  $('#progress').classList.toggle('seekable', prog.seek && prog.dur > 0);
+  $('#progress').title = prog.seek && prog.dur > 0 ? 'Click to jump to that point in the track' : '';
   $('#fadingLabel').textContent = np.fading === 'out' ? 'Fading out' : np.fading === 'in' ? 'Fading in' : '';
 }
 
-/** Current music level in either mode (for the ↑/↓ keys). */
+/** Current music level (for the ↑/↓ keys). */
 function musicVolume() {
-  return musicMode() === 'local'
-    ? (S.localMusic?.volume >= 0 ? S.localMusic.volume : null)
-    : S.spotify.player?.device?.volume ?? null;
+  return S.localMusic?.volume >= 0 ? S.localMusic.volume : null;
 }
 
 setInterval(() => {
@@ -1015,9 +1027,9 @@ setInterval(() => {
 }, 250);
 
 $('#progress').addEventListener('click', (e) => {
-  if (!prog.dur || musicMode() !== 'spotify') return;
+  if (!prog.dur || !prog.seek || musicMode() === 'off') return;
   const r = e.currentTarget.getBoundingClientRect();
-  post('/api/spotify/seek', { ms: ((e.clientX - r.left) / r.width) * prog.dur });
+  post('/api/music/seek', { ms: ((e.clientX - r.left) / r.width) * prog.dur });
 });
 
 const musicToggle = () => post('/api/music/toggle');
@@ -1036,12 +1048,6 @@ const nudgeVolume = (d) => {
 $('#btnPlay').onclick = musicToggle;
 $('#btnNextTrack').onclick = musicNext;
 $('#btnPrevTrack').onclick = () => post('/api/music/previous');
-$('#btnShuffle').onclick = () => post('/api/spotify/shuffle', { state: !S.spotify.player?.shuffle });
-$('#btnRepeat').onclick = () => {
-  const order = ['off', 'context', 'track'];
-  const cur = S.spotify.player?.repeat || 'off';
-  post('/api/spotify/repeat', { state: order[(order.indexOf(cur) + 1) % 3] });
-};
 $('#btnFadeOut').onclick = fadeOut;
 $('#btnFadeIn').onclick = fadeIn;
 // Fade between two chosen levels; the fields are kept on this device for next time.
@@ -1059,80 +1065,9 @@ $('#btnFadeTo').onclick = () => {
   post('/api/music/fadeTo', { from: from === '' ? null : Number(from), to: Number(to), seconds: fadeSecs() });
 };
 bindSlider($('#musicVol'), $('#musicVolOut'), (v) => post('/api/music/volume', { volume: v }));
-$('#btnSpotifyLogout').onclick = () => {
-  if (confirm('Disconnect the Spotify account? You can connect again later.')) post('/api/spotify/logout');
-};
 $('#musicMode').addEventListener('click', (e) => {
   const b = e.target.closest('[data-music]');
   if (b && b.dataset.music !== musicMode()) post('/api/features', { music: b.dataset.music });
-});
-
-// music tabs
-$$('.tab[data-mtab]').forEach((t) => t.addEventListener('click', () => {
-  $$('.tab[data-mtab]').forEach((x) => x.classList.toggle('active', x === t));
-  $$('.mtab').forEach((m) => m.classList.toggle('hidden', m.dataset.mtab !== t.dataset.mtab));
-  if (t.dataset.mtab === 'devices') loadDevices();
-  if (t.dataset.mtab === 'playlists') loadPlaylists();
-  if (t.dataset.mtab === 'search') $('#searchBox').focus();
-}));
-
-function rowHtml({ name, sub, image, uri, queue }) {
-  return `<div class="row" data-uri="${esc(uri)}" role="button" tabindex="0">
-    ${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : '<span class="ph"></span>'}
-    <span class="txt"><span class="t1">${esc(name)}</span><span class="t2">${esc(sub || '')}</span></span>
-    ${queue ? '<button class="btn sm" data-queue="1" title="Add to queue">Queue</button>' : ''}
-  </div>`;
-}
-
-async function loadPlaylists() {
-  const el = $('#playlistList');
-  try {
-    const items = await api('/api/spotify/playlists');
-    el.innerHTML = items.length
-      ? items.map((p) => rowHtml({ name: p.name, sub: p.owner, image: p.image, uri: p.uri })).join('')
-      : '<p class="dim">No playlists</p>';
-  } catch (e) { el.innerHTML = `<p class="dim">${esc(e.message)}</p>`; }
-}
-
-async function loadDevices() {
-  const el = $('#deviceList');
-  el.innerHTML = '<p class="dim">Looking for devices…</p>';
-  try {
-    const devs = await api('/api/spotify/devices');
-    el.innerHTML = devs.length
-      ? devs.map((d) => `<div class="row ${d.is_active ? 'selected' : ''}" data-device="${esc(d.id)}" role="button" tabindex="0">
-          <span class="radio"></span><span class="txt"><span class="t1">${esc(d.name)}</span><span class="t2">${esc(d.type)}${d.volume_percent !== null ? ` · level ${d.volume_percent}` : ''}</span></span></div>`).join('')
-      : '<p class="dim">No devices found. Open the Spotify app on this PC first.</p>';
-  } catch (e) { el.innerHTML = `<p class="dim">${esc(e.message)}</p>`; }
-}
-
-$('#searchBox').addEventListener('keydown', async (e) => {
-  if (e.key !== 'Enter') return;
-  const q = e.target.value.trim();
-  if (!q) return;
-  const el = $('#searchList');
-  el.innerHTML = '<p class="dim">Searching…</p>';
-  try {
-    const r = await api(`/api/spotify/search?q=${encodeURIComponent(q)}`);
-    el.innerHTML =
-      (r.tracks.length ? '<div class="list-section">Tracks</div>' + r.tracks.map((t) => rowHtml({ name: t.name, sub: t.artists, image: t.image, uri: t.uri, queue: true })).join('') : '') +
-      (r.playlists.length ? '<div class="list-section">Playlists</div>' + r.playlists.map((p) => rowHtml({ name: p.name, sub: p.owner, image: p.image, uri: p.uri })).join('') : '') ||
-      '<p class="dim">No results</p>';
-  } catch (err) { el.innerHTML = `<p class="dim">${esc(err.message)}</p>`; }
-});
-
-document.addEventListener('click', async (e) => {
-  const q = e.target.closest('[data-queue]');
-  if (q) {
-    e.stopPropagation();
-    const uri = q.closest('[data-uri]').dataset.uri;
-    try { await api('/api/spotify/queue', { uri }); toast('Added to queue', 'info'); } catch { /* toast shown */ }
-    return;
-  }
-  const dev = e.target.closest('[data-device]');
-  if (dev) { await post('/api/spotify/transfer', { deviceId: dev.dataset.device }); loadDevices(); return; }
-  const row = e.target.closest('.music .row[data-uri]');
-  if (row) post('/api/spotify/play', { uri: row.dataset.uri });
 });
 
 // ---------------- output ----------------
@@ -1835,17 +1770,13 @@ function checkItems() {
   const mode = musicMode();
   if (!edHas('music')) { /* Lite */ }
   else if (mode === 'off') add('info', 'Music', 'Music control is off.');
-  else if (mode === 'local') {
+  else {
     const lm = S.localMusic || {};
-    if (!lm.running) add('warn', 'Music', 'The Spotify app is not running.', { label: 'Open Spotify', run: () => post('/api/music/launch') });
-    else if (!lm.session) add('warn', 'Music', 'Spotify is open, but Stagio can\'t control it yet: play any track once in the Spotify app (pausing afterwards is fine).');
-    else add('ok', 'Music', `${lm.title || 'Spotify'}${lm.artist ? ` · ${lm.artist}` : ''} · ${lm.isPlaying ? 'playing' : 'paused'}`);
-  } else {
-    const sp = S.spotify || {};
-    if (!sp.authorized) add('warn', 'Music', 'Spotify Premium is not connected (see Music).');
-    else if (sp.error) add('warn', 'Music', sp.error);
-    else if (!sp.player) add('warn', 'Music', 'No Spotify device is active. Open Spotify and play something once.');
-    else add('ok', 'Music', `${sp.player.item?.name || 'Spotify'}${sp.player.device ? ` · ${sp.player.device.name}` : ''} · ${sp.player.isPlaying ? 'playing' : 'paused'}`);
+    const name = lm.app?.name || lm.lastApp?.name || 'the music app';
+    const open = lm.lastApp ? { label: `Open ${lm.lastApp.name}`, run: () => post('/api/music/launch') } : undefined;
+    if (!lm.running) add('warn', 'Music', lm.pinned ? `${name} is not open.` : 'No app is playing music on this PC. Start the music in your player once (pausing afterwards is fine).', open);
+    else if (!lm.session) add('warn', 'Music', `${name} is open, but Stagio can't control it yet: start the music once (pausing afterwards is fine).`);
+    else add('ok', 'Music', `${lm.title || name}${lm.artist ? ` · ${lm.artist}` : ''} · ${lm.app?.name ? `${lm.app.name} · ` : ''}${lm.isPlaying ? 'playing' : 'paused'}`);
   }
 
   // Cues that run by themselves in this presentation

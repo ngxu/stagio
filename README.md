@@ -6,8 +6,8 @@ English · [中文](README.zh-CN.md)
 the back of a room (changing slides, playing music, switching the projector and the sound) on one
 screen, and lets you do them from your phone as well.
 
-It drives the PowerPoint and Spotify you already have. No accounts, no cloud: everything runs on
-the presentation computer, and phones connect to it over the local Wi-Fi (or Bluetooth, or
+It drives the PowerPoint and the music player you already have. No accounts, no cloud: everything
+runs on the presentation computer, and phones connect to it over the local Wi-Fi (or Bluetooth, or
 Stagio's own Wi-Fi when there is none).
 
 Stagio was called **OneDesk** until November 2026. Installing Stagio over OneDesk keeps every
@@ -27,7 +27,7 @@ moving to another edition keeps your settings, PIN, cues and runs of show.
 | --- | --- | --- | --- |
 | For | people presenting their own slides | one person running slides, music and the projector | the person running the whole event |
 | Slides, black/white screen, notes, timer, true thumbnails, phone remote, pre-show check, speed-up, offline fallbacks | yes | yes | yes |
-| Music with fades, volume glides, audio output, projector mode, cues, automatic cues | | yes | yes |
+| Music from any player with fades, volume glides, audio output, projector mode, cues, automatic cues | | yes | yes |
 | Run of show, opening countdown, stage display for the speaker, messages to the stage | | | yes |
 
 Each edition has its own version number (`editions.json`): Beta 1.0, 1.1, 1.2, 1.2.1, 2.0 …
@@ -39,12 +39,16 @@ A fix raises the last number, a new feature the middle one.
   black and white screen. Shows PROGRAM (what the projector shows), PREVIEW (what comes next),
   speaker notes with adjustable size, animation steps and a show timer.
 - **True thumbnails**: every slide as it really looks, cached on disk, updated within seconds when
-  someone edits the deck during the show.
+  someone edits the deck during the show. Hidden slides are marked as hidden, as in PowerPoint.
+- **Reorder slides** from the desk: drag a slide to another place; PowerPoint moves it (also
+  during a show) and "Save file" keeps the new order.
 - **Speed-up** for Canva exports that take seconds per slide in PowerPoint for Windows (decorative
   text in a font without those letters): turns that text into a picture in the same place, so the
   slide looks the same and changes instantly. A backup is kept.
-- **Music** (Standard, Extra): Spotify play/pause/skip/seek, playlists, search, queue, and smooth
-  fades: fade out, fade in, or from one level to another, without clicks.
+- **Music** (Standard, Extra): whichever app plays it: a music app, a media player or a browser
+  (on Windows, anything in the system media controls; on the Mac, Music or Spotify). Play/pause,
+  skip, jump within the track, and smooth fades that change only that app: fade out, fade in, or
+  from one level to another, without clicks. Stagio follows the app that plays, or the one you pick.
 - **Output** (Standard, Extra): Windows audio output device, system volume with glides, projector
   mode (PC only / duplicate / extend / projector only), which screen the show uses, hiding
   PowerPoint's presenter view.
@@ -74,15 +78,13 @@ below).
 
 | Device | Role | How |
 | --- | --- | --- |
-| Windows 10/11 PC with PowerPoint (Office 2016 / 365) | the desk | download an installer from the [download page](https://ngxu.github.io/stagio/). Per user, no administrator rights. Spotify (the app) for music |
+| Windows 10/11 PC with PowerPoint (Office 2016 / 365) | the desk | download an installer from the [download page](https://ngxu.github.io/stagio/). Per user, no administrator rights. Any music player for music |
 | iPhone, Android phone, tablet | remote, stage display | in Stagio click **Remote** and scan the QR code |
 | Mac with PowerPoint for Mac | the desk, **test version** | download the Apple silicon or Intel .dmg |
 
-**Windows "protected your PC" warning**: the installers are not code-signed yet. Click
-*More info → Run anyway*. Stagio has applied for the free code signing that the SignPath
-Foundation offers open-source projects; once accepted, the installers built on GitHub will be
-signed (see the [Code signing policy](CODE_SIGNING_POLICY.md)). SmartScreen may still warn for a
-while after that, until the signed installers have been downloaded enough.
+**Windows "protected your PC" warning**: the installers are not code-signed. Click
+*More info → Run anyway*. They are built on GitHub from this repository's source (see the Windows
+build workflow); the release notes list each file's SHA-256 if you want to check a download.
 
 **Mac**: not signed by Apple. The first time, right-click the app in Finder and choose Open. If
 macOS says the app is damaged: `xattr -cr "/Applications/Stagio Standard.app"` (use the edition
@@ -132,8 +134,8 @@ it. The installer writes `resources/edition.json`, which tells the app which edi
 builds all three editions for Apple silicon and Intel and checks the Mac helper.
 
 **CI**: `.github/workflows/windows.yml` and `mac.yml` build everything on GitHub's machines (Actions
-tab → Run workflow, or push a `v*` tag). The Windows workflow signs through SignPath when the
-repository has the SignPath secrets, and builds unsigned otherwise.
+tab → Run workflow, or push a `v*` tag). The Windows workflow can sign through SignPath if the
+repository has SignPath secrets; without them (as now) it builds unsigned.
 
 ## Checks
 
@@ -156,7 +158,7 @@ lib/powerpoint.js       Windows: show state, slide list, edit detection, thumbna
 lib/helper.js           Windows: talks to a long-running PowerShell helper (ps/helper.ps1:
                         PowerPoint COM, Core Audio, media keys, show capture, Bluetooth)
 lib/platform/mac/       Mac: AppleScript + a small Swift helper (mac/helper/main.swift)
-lib/spotify.js, localmusic.js, fade.js   music
+lib/localmusic.js, fade.js               music (any player in the media controls)
 lib/output.js, programfeed.js            audio output, projector mode, PROGRAM picture
 lib/cues.js, autocues.js                 cues
 public/                 the desk (PC, phone, Mac share it), countdown.html, stage.html
@@ -165,7 +167,7 @@ test/                   checks, stress test
 ```
 
 Settings live in `data/` when running from source. Never commit that folder: it holds the PIN and
-the Spotify tokens.
+the access keys.
 
 ## Known limits
 
@@ -184,4 +186,4 @@ Stagio is free software: you can redistribute it and/or modify it under the term
 version 3 of the License, or (at your option) any later version. It is distributed in the hope
 that it will be useful, but WITHOUT ANY WARRANTY; see the license for details.
 
-Security problems: see [SECURITY.md](SECURITY.md). [Code signing policy](CODE_SIGNING_POLICY.md): free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) (applied for).
+Security problems: see [SECURITY.md](SECURITY.md). Code signing: see the [Code signing policy](CODE_SIGNING_POLICY.md) (the installers are not signed at the moment).

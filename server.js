@@ -1,4 +1,4 @@
-// Stagio: one operator controls Spotify, PowerPoint and outputs from one console.
+// Stagio: one operator controls PowerPoint, the music and the outputs from one console.
 const express = require('express');
 const net = require('net');
 const fs = require('fs');
@@ -8,7 +8,6 @@ const { spawn, execFile } = require('child_process');
 const QRCode = require('qrcode');
 
 const config = require('./lib/config');
-const { Spotify } = require('./lib/spotify');
 const { CueRunner, STEP_TYPES } = require('./lib/cues');
 const { AutoCues } = require('./lib/autocues');
 const { RunOfShow } = require('./lib/runofshow');
@@ -21,10 +20,12 @@ const cfg = config.load();
 const saveCfg = () => config.save(cfg);
 
 const { ppt, program, localMusic, output } = platform;
-const spotify = new Spotify(cfg, saveCfg);
 // Lite has no music: nothing is polled or controlled, whatever the shared settings say.
-const music = () => (ed.music ? ({ local: localMusic, spotify }[cfg.features.music] || null) : null);
-const cues = new CueRunner({ ppt, spotify, output, music });
+const music = () => (ed.music && cfg.features.music === 'local' ? localMusic : null);
+// The music app chosen in Stagio ('' = whatever plays), and the one followed last (for "Open").
+localMusic.sourceFn = () => cfg.music.source;
+localMusic.lastAppFn = () => cfg.music.lastApp;
+const cues = new CueRunner({ ppt, output, music });
 
 // Every "start show" (button, key, cue) applies the display chosen under Output. Once Stagio has
 // changed PowerPoint's own setting, going back to "Automatic" has to be written back as well.
@@ -207,7 +208,7 @@ app.use((req, res, next) => {
 // What this edition doesn't have is refused here, whatever a page or a phone asks for.
 const needs = (feature, what) => (req, res, next) => (ed[feature] ? next()
   : res.status(403).json({ ok: false, error: `${what} is not part of ${edition.name}` }));
-app.use(['/api/music', '/api/spotify', '/spotify', '/api/features'], needs('music', 'Music'));
+app.use(['/api/music', '/api/features'], needs('music', 'Music'));
 app.use('/api/audio', needs('audio', 'Sound control'));
 app.use('/api/display', needs('displayMode', 'Display mode'));
 app.use('/api/cues', needs('cues', 'Cues'));
@@ -289,8 +290,7 @@ function buildParts() {
     program: program.summary(),
     platform: { os: platform.os, beta: !!platform.beta, ...platform.features },
     features: cfg.features,
-    spotify: spotify.summary(),
-    localMusic: cfg.features.music === 'local' ? localMusic.summary() : null,
+    localMusic: ed.music && cfg.features.music === 'local' ? localMusic.summary() : null,
     audio: output.audio,
     displays: output.displays,
     displayMode: output.displayMode,
@@ -469,14 +469,14 @@ app.post('/api/bluetooth', act(async (req) => {
 function bleState() {
   const s = ppt.state.show;
   const pres = (ppt.state.presentations || []).find((x) => x.path === ppt.focusPath());
-  const m = cfg.features.music === 'local' ? localMusic.state : spotify.player;
+  const m = localMusic.state;
   return JSON.stringify({
     v: 1,
     s: s?.slide || 0,
     t: s?.total || pres?.slides || 0,
     st: s ? (s.slide ? s.state : 'end') : (ppt.state.running ? 'ready' : 'off'),
     b: s?.clicks ? `${s.click}/${s.clicks}` : '',
-    mu: !music() ? -1 : (m?.isPlaying || m?.is_playing ? 1 : 0),
+    mu: !music() ? -1 : (m?.isPlaying ? 1 : 0),
     f: music()?.fading || '',
     k: !!cfg.cueShift,
     a: bleAccepted, // commands accepted so far: a phone sees it go up when its PIN is right
@@ -612,6 +612,22 @@ app.post('/api/ppt/open', act(async (req) => {
 // same as clicking "Enable Editing" there.
 app.post('/api/ppt/enableEditing', act(() => ppt.cmd('ppt.enableEditing'), pptAfter));
 app.post('/api/ppt/focus', act((req) => { ppt.focus = req.body.path || null; }, pptAfter));
+// Reorder from the desk: the slide with this ID goes to position "to" in that file. PowerPoint does
+// the move (also during a show); the file is changed but not saved until /api/ppt/save.
+app.post('/api/ppt/move', act(async (req) => {
+  const p = String(req.body?.path || '');
+  const id = Number(req.body?.id);
+  const to = Number(req.body?.to);
+  if (!p || !Number.isInteger(id) || !Number.isInteger(to) || to < 1) throw new Error('Which slide, and where to?');
+  const r = await ppt.cmd('ppt.moveSlide', { path: p, id, to });
+  ppt.relist();
+  return r;
+}, pptAfter));
+app.post('/api/ppt/save', act(async (req) => {
+  const p = String(req.body?.path || '');
+  if (!p) throw new Error('Which file?');
+  return ppt.cmd('ppt.save', { path: p });
+}, pptAfter));
 app.post('/api/ppt/monitor', act((req) => {
   cfg.pptMonitor = req.body.monitor || null;
   if (cfg.pptMonitor) cfg.pptMonitorManaged = true;
@@ -938,15 +954,16 @@ app.post('/api/settings', act((req) => {
 app.post('/api/timer/segment', act(() => startSegment('')));
 
 app.post('/api/features', act(async (req) => {
+  // 'local' = music on (the Premium mode of earlier versions is gone: 'spotify' means on)
   if (['local', 'spotify', 'off'].includes(req.body.music)) {
     music()?.cancelFade();
-    cfg.features.music = req.body.music;
+    cfg.features.music = req.body.music === 'off' ? 'off' : 'local';
     saveCfg();
     if (cfg.features.music === 'local') await localMusic.poll();
   }
 }));
 
-// ---------------- music (whichever mode is active) ----------------
+// ---------------- music: whichever app plays it ----------------
 
 const requireMusic = () => {
   const m = music();
@@ -969,55 +986,22 @@ app.post('/api/music/fadeTo', act((req) => {
   if (from !== null && (!Number.isFinite(from) || from < 0 || from > 100)) throw new Error('"From" must be a level from 0 to 100, or empty');
   requireMusic().fadeTo(to, Number(req.body.seconds) || 3, from).catch(() => {});
 }));
-app.post('/api/music/launch', act(() => localMusic.launch()));
+app.post('/api/music/launch', act(() => localMusic.launch(), musicAfter));
+app.post('/api/music/seek', act((req) => requireMusic().seek(req.body.ms), musicAfter));
+// Which app to follow: '' = whatever plays (the one followed so far stays while it plays).
+app.post('/api/music/source', act(async (req) => {
+  const id = String(req.body?.id ?? '').slice(0, 300);
+  music()?.cancelFade();
+  cfg.music.source = id;
+  saveCfg();
+  await localMusic.poll();
+}));
 app.get('/api/music/art', (req, res) => {
   const file = localMusic.artFile();
   if (!file) return res.status(404).end();
   res.setHeader('Cache-Control', 'max-age=3600');
   res.type('image/png').sendFile(file); // browsers sniff JPEG vs PNG
 });
-
-// ---------------- Spotify ----------------
-
-const spAfter = () => new Promise((r) => setTimeout(r, 250)).then(() => spotify.poll());
-
-app.post('/api/spotify/config', act((req) => {
-  cfg.spotify.clientId = String(req.body.clientId || '').trim();
-  cfg.spotify.tokens = null;
-  saveCfg();
-}));
-app.get('/spotify/login', (req, res) => {
-  if (!spotify.configured) return res.redirect('/');
-  if (!isLoopback(req)) return res.send('Connect Spotify from the console on the PC.');
-  res.redirect(spotify.authUrl());
-});
-app.get('/spotify/callback', async (req, res) => {
-  try {
-    if (req.query.error) throw new Error(String(req.query.error));
-    await spotify.handleCallback(String(req.query.code), String(req.query.state));
-    await spotify.poll();
-    broadcast();
-    res.redirect('/');
-  } catch (e) {
-    res.status(400).send(`<p style="font:16px sans-serif;padding:24px">${escHtml(e.message)}<br><a href="/">Back</a></p>`);
-  }
-});
-app.post('/api/spotify/logout', act(() => spotify.logout()));
-
-app.post('/api/spotify/play', act((req) => {
-  const { uri, deviceId } = req.body || {};
-  const dev = deviceId || spotify.deviceId();
-  if (!uri) return spotify.play({ deviceId: dev });
-  return uri.includes(':track:') ? spotify.play({ uris: [uri], deviceId: dev }) : spotify.play({ contextUri: uri, deviceId: dev });
-}, spAfter));
-app.post('/api/spotify/seek', act((req) => spotify.seek(req.body.ms), spAfter));
-app.post('/api/spotify/shuffle', act((req) => spotify.shuffle(req.body.state), spAfter));
-app.post('/api/spotify/repeat', act((req) => spotify.repeat(req.body.state), spAfter));
-app.post('/api/spotify/queue', act((req) => spotify.queue(req.body.uri)));
-app.post('/api/spotify/transfer', act((req) => spotify.transfer(req.body.deviceId, req.body.play ?? true), spAfter));
-app.get('/api/spotify/devices', act(() => spotify.devices()));
-app.get('/api/spotify/playlists', act(() => spotify.playlists()));
-app.get('/api/spotify/search', act((req) => spotify.search(String(req.query.q || ''))));
 
 // ---------------- outputs ----------------
 
@@ -1171,8 +1155,20 @@ program.start();
 // The show state is read often while a show runs (a clicker may change slides behind our back)
 // and less often otherwise.
 loop(() => ppt.poll(), () => (ppt.state.show ? 400 : 1000));
-loop(() => (ed.music && cfg.features.music === 'spotify' ? spotify.poll() : null), 1500);
-loop(() => (ed.music && cfg.features.music === 'local' ? localMusic.poll() : null), 1000);
+loop(async () => {
+  if (!ed.music || cfg.features.music !== 'local') return;
+  await localMusic.poll();
+  // Remember the app last followed, so "Open" can start it before the next event.
+  const app = localMusic.state?.app;
+  if (app?.id && localMusic.state?.session) {
+    const last = cfg.music.lastApp;
+    const p = app.path || (last?.id === app.id ? last.path : '') || '';
+    if (!last || last.id !== app.id || last.path !== p || last.name !== app.name) {
+      cfg.music.lastApp = { id: app.id, name: app.name, path: p };
+      saveCfg();
+    }
+  }
+}, 1000);
 loop(() => (ed.audio ? output.pollAudio() : null), 3000);
 loop(() => {
   for (const r of cfg.recent) {
