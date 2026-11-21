@@ -372,6 +372,7 @@ namespace Stagio {
   public class AppSound {
     public int pid { get; set; }
     public string name { get; set; }   // process name
+    public int session { get; set; }   // Windows session (other users' processes are left alone)
     public bool active { get; set; }   // playing sound right now
   }
 
@@ -456,7 +457,7 @@ namespace Stagio {
           AppSound s;
           if (!byPid.TryGetValue(pid, out s)) {
             s = new AppSound(); s.pid = (int)pid;
-            try { using (System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById((int)pid)) s.name = p.ProcessName; } catch { continue; }
+            try { using (System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById((int)pid)) { s.name = p.ProcessName; s.session = p.SessionId; } } catch { continue; }
             byPid[pid] = s;
           }
           if (state == 1) s.active = true;
@@ -579,6 +580,7 @@ Add-CachedType 'audio' $audioSource
 $ppSlideShowStates = @{ 1 = 'running'; 2 = 'paused'; 3 = 'black'; 4 = 'white'; 5 = 'done' }
 
 function Get-PPT {
+  if ([Diagnostics.Process]::GetProcessesByName('POWERPNT').Length -eq 0) { $script:noPowerPoint = $true; return $null }
   try { return [Runtime.InteropServices.Marshal]::GetActiveObject('PowerPoint.Application') } catch { return $null }
 }
 
@@ -1578,7 +1580,7 @@ $script:appLabels = @{}
 function Get-AppLabel($p) {
   if ($script:appLabels.ContainsKey($p.ProcessName)) { return $script:appLabels[$p.ProcessName] }
   $label = $p.ProcessName
-  try { $d = $p.MainModule.FileVersionInfo.FileDescription; if ($d) { $label = $d.Trim() } } catch { }
+  try { $d = [Diagnostics.Process]::GetProcessById($p.Id).MainModule.FileVersionInfo.FileDescription; if ($d) { $label = $d.Trim() } } catch { }
   $script:appLabels[$p.ProcessName] = $label
   return $label
 }
@@ -1595,24 +1597,25 @@ function Preview-Apply($a) {
   if ($a.overrides) { foreach ($k in $a.overrides.PSObject.Properties) { $over[$k.Name.ToLowerInvariant()] = [string]$k.Value } }
   $touched = New-Object System.Collections.Generic.HashSet[string] ([StringComparer]::OrdinalIgnoreCase)
   foreach ($t in @($a.touched)) { if ($t) { [void]$touched.Add([string]$t) } }
-  $mine = (Get-Process -Id $PID).SessionId
+  if ($null -eq $script:mySession) { $script:mySession = [Diagnostics.Process]::GetCurrentProcess().SessionId }
+  $mine = $script:mySession
 
-  # Who to look at: apps with sound (+ open players and browsers while on); while off, only the
-  # programs Stagio sent somewhere before.
+  # Who to look at: apps with sound; while off, only the programs Stagio sent somewhere before.
+  # (Plain .NET calls here: this runs about twice a second while the preview is on.)
   $procs = @{}
   $active = @{}
   foreach ($s in [Stagio.AudioRoute]::Sessions()) {
     $active[$s.pid] = $s.active
-    try { $procs[$s.pid] = Get-Process -Id $s.pid -ErrorAction Stop } catch { }
+    $procs[$s.pid] = @{ Id = $s.pid; ProcessName = $s.name; SessionId = $s.session }
   }
-  if ($touched.Count -gt 0) {
-    foreach ($p in (Get-Process -Name @($touched) -ErrorAction SilentlyContinue)) { $procs[$p.Id] = $p }
+  foreach ($t in @($touched)) {
+    foreach ($x in [Diagnostics.Process]::GetProcessesByName($t)) { $procs[$x.Id] = @{ Id = $x.Id; ProcessName = $x.ProcessName; SessionId = $x.SessionId } }
   }
 
   # checks only: limit to these programs (and include them even without sound)
   if ($a.only) {
     $only = @($a.only)
-    foreach ($p in (Get-Process -Name $only -ErrorAction SilentlyContinue)) { $procs[$p.Id] = $p }
+    foreach ($p in (Get-Process -Name $only -ErrorAction SilentlyContinue)) { $procs[$p.Id] = @{ Id = $p.Id; ProcessName = $p.ProcessName; SessionId = $p.SessionId } }
     foreach ($k in @($procs.Keys)) { if ($only -notcontains $procs[$k].ProcessName) { $procs.Remove($k) } }
   }
   $apps = @{}
@@ -1674,6 +1677,7 @@ $script:asStream = [System.IO.WindowsRuntimeStreamExtensions].GetMethod('AsStrea
 $script:musicPick = ''        # the app Stagio follows (its media-controls ID); kept while it stays
 $script:musicProc = 'Spotify' # its process name, for the level and fades
 $script:appInfo = @{}         # media-controls ID -> @{ id; name; process; path }
+$script:appMiss = @{}         # Store apps whose process was not found (not searched again for 30 s)
 
 function Get-MediaManager {
   if (-not $script:mediaMgr) {
@@ -1696,8 +1700,12 @@ function Resolve-AppProcess($id) {
   if ($id -match '^([^!_]+)_[^!]*!') {
     # a Store app (Package_publisher!App): the running process that lives in that package
     $pkg = $Matches[1]
-    $p = Get-Process | Where-Object { $_.Path -like "*\WindowsApps\$pkg*" } | Select-Object -First 1
-    if ($p) { return $p.ProcessName }
+    $miss = $script:appMiss[$id]
+    if (-not $miss -or ([DateTime]::UtcNow - $miss).TotalSeconds -gt 30) {
+      $p = Get-Process | Where-Object { $_.Path -like "*\WindowsApps\$pkg*" } | Select-Object -First 1
+      if ($p) { return $p.ProcessName }
+      $script:appMiss[$id] = [DateTime]::UtcNow
+    }
   }
   return (($id -split '[!\\]')[-1] -replace '\.exe$', '')
 }
@@ -1707,7 +1715,8 @@ function Get-AppInfo($id) {
   if ($c) { return $c }
   $proc = Resolve-AppProcess $id
   $c = @{ id = $id; name = $proc; process = $proc; path = $null }
-  $p = Get-Process -Name $proc -ErrorAction SilentlyContinue | Where-Object { $_.Path } | Select-Object -First 1
+  $p = $null
+  foreach ($x in [Diagnostics.Process]::GetProcessesByName($proc)) { try { if ($x.Path) { $p = $x; break } } catch { } }
   if ($p) {
     $c.path = $p.Path
     try { $d = $p.MainModule.FileVersionInfo.FileDescription; if ($d) { $c.name = $d.Trim() } } catch { }
@@ -1725,7 +1734,7 @@ function Select-MusicSession($want) {
   if ($want) { return ($sessions | Where-Object { $_.SourceAppUserModelId -eq $want } | Select-Object -First 1) }
   if ($sessions.Count -eq 0) { return $null }
   $cur = $mgr.GetCurrentSession()
-  $playing = @($sessions | Where-Object { [string]$_.GetPlaybackInfo().PlaybackStatus -eq 'Playing' })
+  $playing = @($sessions | Where-Object { try { [string]$_.GetPlaybackInfo().PlaybackStatus -eq 'Playing' } catch { $false } })
   $pick = $playing | Where-Object { $_.SourceAppUserModelId -eq $script:musicPick } | Select-Object -First 1
   if (-not $pick -and $cur) { $pick = $playing | Where-Object { $_.SourceAppUserModelId -eq $cur.SourceAppUserModelId } | Select-Object -First 1 }
   if (-not $pick) { $pick = $playing | Select-Object -First 1 }
@@ -1738,8 +1747,10 @@ function Select-MusicSession($want) {
 function Music-State($a) {
   $mgr = Get-MediaManager
   $sources = @($mgr.GetSessions() | ForEach-Object {
-    $i = Get-AppInfo $_.SourceAppUserModelId
-    @{ id = $i.id; name = $i.name; playing = ([string]$_.GetPlaybackInfo().PlaybackStatus -eq 'Playing') }
+    try {
+      $i = Get-AppInfo $_.SourceAppUserModelId
+      @{ id = $i.id; name = $i.name; playing = ([string]$_.GetPlaybackInfo().PlaybackStatus -eq 'Playing') }
+    } catch { }
   })
   $s = Select-MusicSession $a.source
   if (-not $s) {
@@ -2572,8 +2583,11 @@ while ($true) {
   # PowerPoint objects are released right after every PowerPoint command, so PowerPoint can quit
   # normally when the user closes it. A full collection costs about 25 ms, so the frequent
   # non-PowerPoint commands (volume steps of a fade, screen capture) only get one now and then.
-  if ($cmd.StartsWith('ppt.') -or $gcClock.ElapsedMilliseconds -gt 10000) {
+  # (The status poll that found PowerPoint not running touched no PowerPoint object: no collection.)
+  $skip = $cmd -eq 'ppt.state' -and $script:noPowerPoint
+  if (($cmd.StartsWith('ppt.') -and -not $skip) -or $gcClock.ElapsedMilliseconds -gt 10000) {
     [GC]::Collect(); [GC]::WaitForPendingFinalizers()
     $gcClock.Restart()
   }
+  $script:noPowerPoint = $false
 }

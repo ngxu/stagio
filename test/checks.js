@@ -211,7 +211,7 @@ async function fadeChecks() {
   const { LocalMusic } = require('../lib/localmusic');
   let calls = [];
   let playing = true; let vol = 80; let fadeId = 0; const fades = {};
-  let stopReportedAt = 0; // after a pause, the stand-in Spotify still says "playing" until then
+  let stopReportedAt = 0; // after a pause, the stand-in music app still says "playing" until then
   const control = {
     async call(cmd, args = {}) {
       calls.push(cmd === 'music.do' ? `do:${args.action}` : cmd === 'music.volume' ? `volume:${args.value}${args.glideMs ? `:glide${args.glideMs}` : ''}` : cmd);
@@ -245,7 +245,7 @@ async function fadeChecks() {
   const seq = calls.filter((c) => c !== 'music.fadeStatus' && c !== 'music.state');
   check('fade-out runs as one glide in the helper, not as volume steps', seq[0] === 'music.fade' && !calls.some((c) => /^volume:\d+$/.test(c) && c !== 'volume:80'), seq.join(' '));
   const restoreAt = calls.indexOf('volume:80');
-  check('...then pauses, and puts the level back only after Spotify reports it stopped',
+  check('...then pauses, and puts the level back only after the music app reports it stopped',
     seq.join(' ') === 'music.fade do:pause volume:80' && restoreAt > calls.lastIndexOf('music.state') && Date.now() - t0 >= 300 + 250 + 400, `${Date.now() - t0} ms`);
 
   // fade-in from paused: silent first, play, silenced the moment the audio exists, then one glide up

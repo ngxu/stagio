@@ -240,7 +240,7 @@ const tests = {
   // Music fades while flipping slides: slide control must stay fast.
   async G() {
     const m0 = (await state()).localMusic;
-    if (!m0?.session) return report('G 音乐淡出时翻页', false, { skipped: 'Spotify 没有在播放' });
+    if (!m0?.session) return report('G 音乐淡出时翻页', false, { skipped: '没有程序在放音乐' });
     if (!m0.isPlaying) { await post('/api/music/toggle'); await sleep(1000); }
     await post('/api/music/volume', { volume: 100 });
     await post('/api/ppt/goto', { slide: 10 });
@@ -264,7 +264,7 @@ const tests = {
   // Fade buttons mashed: must never end stuck silent or half-way.
   async H() {
     const m0 = (await state()).localMusic;
-    if (!m0?.session) return report('H 狂按淡入/淡出', false, { skipped: 'Spotify 没有在播放' });
+    if (!m0?.session) return report('H 狂按淡入/淡出', false, { skipped: '没有程序在放音乐' });
     await post('/api/music/volume', { volume: 100 });
     for (let i = 0; i < 12; i++) {
       await post(i % 2 ? '/api/music/fadeIn' : '/api/music/fadeOut', { seconds: 2 });
@@ -317,7 +317,7 @@ const tests = {
       if (r.ok) { recoveredMs = Date.now() - t0; break; }
       await sleep(200);
     }
-    const musicBack = musicWasUp ? await waitFor((s) => s.localMusic?.session, 20000) : 'skipped (Spotify not playing)';
+    const musicBack = musicWasUp ? await waitFor((s) => s.localMusic?.session, 20000) : 'skipped (no music playing)';
     const after = await debug();
     const s = await settleSlide(slideBefore + 1);
     report('J 所有后台进程全部被杀掉', recoveredMs !== null && s === slideBefore + 1 && musicBack !== null, {

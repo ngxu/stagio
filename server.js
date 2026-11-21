@@ -31,8 +31,8 @@ const preview = ed.preview && platform.features.preview && platform.helpers?.mus
   ? new Preview({
     control: platform.helpers.music, cfg, save: saveCfg, pro: ed.previewPro,
     musicApp: () => (music() && localMusic.state?.session ? localMusic.state.app?.process || '' : ''),
-    devices: () => output.audio?.devices || [],
-    onChange: () => broadcast(),
+    devices: () => (Array.isArray(output.audio?.devices) ? output.audio.devices : null), // null: the reading failed
+    onChange: () => broadcastSoon(),
   })
   : null;
 const cues = new CueRunner({ ppt, output, music, preview: () => (ed.previewPro ? preview : null) });
@@ -406,10 +406,19 @@ app.get('/api/debug', (req, res) => {
 });
 
 /** Runs `fn` again and again, `every` ms apart (a number, or a function returning one). */
-function loop(fn, every) {
+// Many loops finish within a few milliseconds of each other; they share one rebuild of the state
+// (building and comparing every part ~10 times a second was most of the server's idle CPU).
+let broadcastTimer = null;
+function broadcastSoon() {
+  if (broadcastTimer) return;
+  broadcastTimer = setTimeout(() => { broadcastTimer = null; broadcast(); }, 25);
+}
+
+/** Runs fn, then again after `every` ms (a number or a function). quiet: fn reports changes itself. */
+function loop(fn, every, { quiet = false } = {}) {
   const tick = async () => {
     try { await fn(); } catch (e) { console.error(e); }
-    broadcast();
+    if (!quiet) broadcastSoon();
     setTimeout(tick, typeof every === 'function' ? every() : every);
   };
   tick();
@@ -1178,7 +1187,7 @@ program.onChange = () => broadcast();
 program.start();
 // The show state is read often while a show runs (a clicker may change slides behind our back)
 // and less often otherwise.
-loop(() => ppt.poll(), () => (ppt.state.show ? 400 : 1000));
+loop(() => ppt.poll(), () => (ppt.state.show ? 400 : ppt.state.running ? 1000 : 2000));
 loop(async () => {
   if (!ed.music || cfg.features.music !== 'local') return;
   await localMusic.poll();
@@ -1192,13 +1201,15 @@ loop(async () => {
       saveCfg();
     }
   }
-}, 1000);
+// every second during a fade, every 2 s while it plays (the desk moves the progress bar in between),
+// every 3 s when nothing plays: each call wakes a helper process, which costs more than the call
+}, () => (localMusic.fading ? 1000 : localMusic.state?.isPlaying ? 2000 : 3000));
 loop(async () => {
   if (!ed.audio) return;
   await output.pollAudio();
   preview?.devicesChanged();
 }, 3000);
-loop(() => preview?.tick(), 200);
+loop(() => preview?.tick(), 200, { quiet: true }); // it broadcasts when something changed
 loop(() => {
   for (const r of cfg.recent) {
     if (!isFilePath(r.path) || /^https?:/i.test(r.path)) continue;
@@ -1221,8 +1232,9 @@ if (program.captureSlide && ppt.captureTarget) {
 // Is someone working in PowerPoint right now? Background work then waits (see userInPowerPoint).
 if (platform.helpers?.capture && 'activity' in ppt) {
   loop(async () => {
+    if (!ppt.state.running) return;
     try { ppt.activity = { ...(await platform.helpers.capture.call('sys.activity', {}, { timeoutMs: 3000 })), at: Date.now() }; } catch { /* keep the last reading; it expires */ }
-  }, 2000);
+  }, 2000, { quiet: true });
 }
 
 const url = `http://127.0.0.1:${cfg.port}/`;
